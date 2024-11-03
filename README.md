@@ -5,7 +5,7 @@ MINIMA Custom GPT link - https://chatgpt.com/g/g-r1MNTSb0Q-minima-local-computer
 
 1.	Create a .env file in the project’s root directory (where you’ll find env.sample). Place .env in the same folder and copy all environment variables from env.sample to .env.
 2.	Ensure your .env file includes the following variables:
-<ol>
+<ul>
    <li> LOCAL_FILES_PATH </li>
    <li> EMBEDDING_MODEL_ID </li>
    <li> EMBEDDING_SIZE</li>
@@ -15,7 +15,9 @@ MINIMA Custom GPT link - https://chatgpt.com/g/g-r1MNTSb0Q-minima-local-computer
    <li> FIRESTORE_COLLECTION_NAME </li>
    <li> FIREBASE_KEY_FILE </li>
    <li> USER_ID </li>
-</ol>
+</ul>
+
+
 3. Wait few minutes (model loading and inexing)
 4. docker compose --env-file .env up --build
 5. Open [MINIMA CustomGPT](https://chatgpt.com/g/g-r1MNTSb0Q-minima-local-computer-search)
