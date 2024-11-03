@@ -35,3 +35,4 @@ USER_ID: Create a unique user ID, which will link your ChatGPT connection to you
 
 WE DO NOT STORE ANY PRIVATE DATA.
 
+Minima (https://github.com/dmayboroda/minima) is licensed under the Mozilla Public License v2.0 (MPLv2).
