@@ -1,6 +1,8 @@
 **Minima** is an open source solution to search documents (and photos, calendar etc. in future) with a simple query in chat GPT.
 It's a fully local RAG, enbedding models and simple setup via docker.
 
+MINIMA Custom GPT link - https://chatgpt.com/g/g-r1MNTSb0Q-minima-local-computer-search
+
 1.	Create a .env file in the project’s root directory (where you’ll find env.sample). Place .env in the same folder and copy all environment variables from env.sample to .env.
 2.	Ensure your .env file includes the following variables:
 <ol>
@@ -14,6 +16,11 @@ It's a fully local RAG, enbedding models and simple setup via docker.
    <li> FIREBASE_KEY_FILE </li>
    <li> USER_ID </li>
 </ol>
+3. Wait few minutes (model loading and inexing)
+4. docker compose --env-file .env up --build
+5. Open [MINIMA CustomGPT](https://chatgpt.com/g/g-r1MNTSb0Q-minima-local-computer-search)
+6. Say "My user id is: {USER_ID_from_qdrant_setup}"
+7. Ask anything, and you'll get answers based on local files in {LOCAL_FILES_PATH} folder.
 
 Explanation of Variables
 
