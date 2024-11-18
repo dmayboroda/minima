@@ -16,6 +16,7 @@ __pycache__/
 
 local_files/
 qdrant_data/
+ollama/
 
 *.db
 .envrc

@@ -1,6 +1,23 @@
 version: '3.9'
 services:
 
+  ollama:
+    image: ollama/ollama:latest
+    restart: always
+    container_name: ollama
+    ports:
+      - 11434:11434
+    expose:
+      - 11434
+    volumes:
+      - ./ollama:/root/.ollama
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "ollama serve &
+      sleep 10 &&
+      ollama pull qwen2:0.5b &&
+      wait"
+    
   qdrant:
     image: qdrant/qdrant:latest
     restart: always
@@ -20,7 +37,7 @@ services:
   indexer:
     build: ./indexer
     volumes:
-      - ${LOCAL_FILES_PATH}:/usr/src/app/local_files
+      - ${LOCAL_FILES_PATH}:/usr/src/app/local_files/
       - ./indexer:/usr/src/app
     ports:
       - 8001:8000
@@ -30,28 +47,40 @@ services:
       - LOCAL_FILES_PATH=${LOCAL_FILES_PATH}
       - EMBEDDING_MODEL_ID=${EMBEDDING_MODEL_ID}
       - EMBEDDING_SIZE=${EMBEDDING_SIZE}
-      - QDRANT_BOOTSTRAP=${QDRANT_BOOTSTRAP}
-      - QDRANT_COLLECTION=${QDRANT_COLLECTION}
       - START_INDEXING=${START_INDEXING}
     depends_on:
       - qdrant
-
-  linker:
-    build: ./linker
+    
+  llm:
+    build: ./llm
     volumes:
-      - ./linker:/usr/src/app
+      - ./llm:/usr/src/app
     ports:
-      - 8002:8000
+      - 8003:8000
     environment:
       - PYTHONPATH=/usr/src
       - PYTHONUNBUFFERED=TRUE
-      - FIRESTORE_COLLECTION_NAME=${FIRESTORE_COLLECTION_NAME}
-      - FIREBASE_KEY_FILE=${FIREBASE_KEY_FILE}
-      - GOOGLE_APPLICATION_CREDENTIALS=${FIREBASE_KEY_FILE}
-      - USER_ID=${USER_ID}
-      - TASKS_COLLECTION=${TASKS_COLLECTION}
     depends_on:
+      - ollama
       - qdrant
+      - indexer
+      
+  # linker:
+  #   build: ./linker
+  #   volumes:
+  #     - ./linker:/usr/src/app
+  #   ports:
+  #     - 8002:8000
+  #   environment:
+  #     - PYTHONPATH=/usr/src
+  #     - PYTHONUNBUFFERED=TRUE
+  #     - FIRESTORE_COLLECTION_NAME=userTasks
+  #     - TASKS_COLLECTION=tasks
+  #     - FIREBASE_KEY_FILE=${FIREBASE_KEY_FILE}
+  #     - GOOGLE_APPLICATION_CREDENTIALS=${FIREBASE_KEY_FILE}
+  #     - USER_ID=${USER_ID}
+  #   depends_on:
+  #     - qdrant
     
   nginx-reverse-proxy:
     image: nginx:latest
@@ -62,4 +91,4 @@ services:
     depends_on:
       - qdrant
       - indexer
-      - linker
+      - ollama

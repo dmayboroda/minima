@@ -1,3 +1,4 @@
+import os
 import logging
 import asyncio
 from indexer import Indexer
@@ -9,6 +10,8 @@ from async_loop import index_loop, crawl_loop
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+START_INDEXING = os.getenv('START_INDEXING', 'false').lower() == 'true'
 
 indexer = Indexer()
 async_queue = AsyncQueue()
@@ -31,14 +34,36 @@ async def query(request: Query):
     except Exception as e:
         logger.error(f"Error in processing query: {e}")
         return {"error": str(e)}
+    
+@router.post(
+    "/embedding", 
+    response_description='Get embedding for a query',
+)
+async def embedding(request: Query):
+    logger.info(f"Received embedding request: {request}")
+    try:
+        result = indexer.embed(request.query)
+        logger.info(f"Found {len(result)} results for query: {request.query}")
+        return {"result": result}
+    except Exception as e:
+        logger.error(f"Error in processing embedding: {e}")
+        return {"error": str(e)}    
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    crawl_task = asyncio.create_task(crawl_loop(async_queue))
-    index_task = asyncio.create_task(index_loop(async_queue, indexer))
-    yield
-    crawl_task.cancel()
-    index_task.cancel()
+    tasks = []
+    try:
+        if START_INDEXING:
+            tasks.extend([
+                asyncio.create_task(crawl_loop(async_queue)),
+                asyncio.create_task(index_loop(async_queue, indexer))
+            ])
+        yield
+    finally:
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
 
 
 def create_app() -> FastAPI:

@@ -1,0 +1,17 @@
+requests
+ollama
+langgraph
+langchain
+langchain-core
+langchain_qdrant
+langchain-ollama
+langchain_community==0.2.17
+langchain-huggingface
+sentence-transformers==2.6.0
+transformers
+asyncio==3.4.3
+fastapi==0.111.0
+qdrant-client
+uvicorn[standard]
+python-dotenv
+pydantic

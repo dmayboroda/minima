@@ -8,15 +8,10 @@ from concurrent.futures import ThreadPoolExecutor
 logger = logging.getLogger(__name__)
 executor = ThreadPoolExecutor()
 
-START_INDEXING = os.environ.get("START_INDEXING")
 CONTAINER_PATH = "/usr/src/app/local_files/"
 AVAILABLE_EXTENSIONS = [ ".pdf", ".xls", ".docx", ".txt", ".md", ".csv" ]
 
 async def crawl_loop(async_queue):
-    logger.info(f"Crawling process started: {START_INDEXING}")
-    if START_INDEXING == 'false':
-        logger.info("Please change environment variable START_INDEXING to 'true'")
-        return
     logger.info(f"Starting crawl loop with path: {CONTAINER_PATH}")
     for root, _, files in os.walk(CONTAINER_PATH):
         logger.info(f"Processing folder: {root}")
@@ -34,14 +29,11 @@ async def crawl_loop(async_queue):
 
 
 async def index_loop(async_queue, indexer: Indexer):
-    logger.info(f"Indexing process started: {START_INDEXING}")
-    if START_INDEXING == 'false':
-        logger.info("Please change environment variable START_INDEXING to 'true'")
-        return
     loop = asyncio.get_running_loop()
     logger.info("Starting index loop")
     while True:
         if async_queue.size() == 0:
+            logger.info("No files to index. Indexing stopped, all files indexed.")
             await asyncio.sleep(0.1)
             continue
         message = await async_queue.dequeue()

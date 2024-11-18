@@ -2,11 +2,16 @@ import os
 import uuid
 import torch
 import logging
+from dataclasses import dataclass
+from typing import List, Set, Dict, Optional
+from pathlib import Path
+
 from qdrant_client import QdrantClient
 from langchain_qdrant import QdrantVectorStore
 from langchain_huggingface import HuggingFaceEmbeddings
 from qdrant_client.http.models import Distance, VectorParams
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.schema import Document
 from langchain_community.document_loaders import (
     TextLoader,
     CSVLoader,
@@ -15,112 +20,149 @@ from langchain_community.document_loaders import (
     PyMuPDFLoader,
 )
 
+
 logger = logging.getLogger(__name__)
 
-EXTENSIONS_TO_LOADERS = {
-    ".pdf": PyMuPDFLoader,
-    ".xls": UnstructuredExcelLoader,
-    ".docx": Docx2txtLoader,
-    ".txt": TextLoader,
-    ".md": TextLoader,
-    ".csv": CSVLoader,
-}
 
-DEVICE = torch.device(
-    "mps" if torch.backends.mps.is_available() else
-    "cuda" if torch.cuda.is_available() else
-    "cpu"
-)
-
-START_INDEXING = os.environ.get("START_INDEXING")
-LOCAL_FILES_PATH = os.environ.get("LOCAL_FILES_PATH")
-CONTAINER_PATH = "/usr/src/app/local_files/"
+@dataclass
+class Config:
+    EXTENSIONS_TO_LOADERS = {
+        ".pdf": PyMuPDFLoader,
+        ".xls": UnstructuredExcelLoader,
+        ".docx": Docx2txtLoader,
+        ".txt": TextLoader,
+        ".md": TextLoader,
+        ".csv": CSVLoader,
+    }
+    
+    DEVICE = torch.device(
+        "mps" if torch.backends.mps.is_available() else
+        "cuda" if torch.cuda.is_available() else
+        "cpu"
+    )
+    
+    START_INDEXING = os.environ.get("START_INDEXING")
+    LOCAL_FILES_PATH = os.environ.get("LOCAL_FILES_PATH")
+    CONTAINER_PATH = "/usr/src/app/local_files/"
+    QDRANT_COLLECTION = "mnm_storage"
+    QDRANT_BOOTSTRAP = "qdrant"
+    EMBEDDING_MODEL_ID = os.environ.get("EMBEDDING_MODEL_ID")
+    EMBEDDING_SIZE = os.environ.get("EMBEDDING_SIZE")
+    
+    CHUNK_SIZE = 500
+    CHUNK_OVERLAP = 200
 
 class Indexer:
-
     def __init__(self):
-        self.qdrant = QdrantClient(
-            host=os.environ.get("QDRANT_BOOTSTRAP"), 
-        )
-        embed_model_id = os.environ.get("EMBEDDING_MODEL_ID")
-        self.embed_model = HuggingFaceEmbeddings(
-            model_name=embed_model_id,
-            model_kwargs={'device': DEVICE},
+        self.config = Config()
+        self.qdrant = self._initialize_qdrant()
+        self.embed_model = self._initialize_embeddings()
+        self.document_store = self._setup_collection()
+        self.text_splitter = self._initialize_text_splitter()
+
+    def _initialize_qdrant(self) -> QdrantClient:
+        return QdrantClient(host=self.config.QDRANT_BOOTSTRAP)
+
+    def _initialize_embeddings(self) -> HuggingFaceEmbeddings:
+        return HuggingFaceEmbeddings(
+            model_name=self.config.EMBEDDING_MODEL_ID,
+            model_kwargs={'device': self.config.DEVICE},
             encode_kwargs={'normalize_embeddings': False}
         )
-        file_collection = os.environ.get("QDRANT_COLLECTION")
-        self.document_store = self.setup_collection(file_collection)
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500, 
-            chunk_overlap=200
+
+    def _initialize_text_splitter(self) -> RecursiveCharacterTextSplitter:
+        return RecursiveCharacterTextSplitter(
+            chunk_size=self.config.CHUNK_SIZE,
+            chunk_overlap=self.config.CHUNK_OVERLAP
         )
 
-    def setup_collection(self, collection_name):
-        embedding_size = os.environ.get("EMBEDDING_SIZE")
-        if not self.qdrant.collection_exists(collection_name):
+    def _setup_collection(self) -> QdrantVectorStore:
+        if not self.qdrant.collection_exists(self.config.QDRANT_COLLECTION):
             self.qdrant.create_collection(
-                collection_name=collection_name,
+                collection_name=self.config.QDRANT_COLLECTION,
                 vectors_config=VectorParams(
-                    size=embedding_size, 
+                    size=self.config.EMBEDDING_SIZE,
                     distance=Distance.COSINE
                 ),
             )
         return QdrantVectorStore(
             client=self.qdrant,
-            collection_name=collection_name,
+            collection_name=self.config.QDRANT_COLLECTION,
             embedding=self.embed_model,
         )
-    
-    def _create_loader(self, file_path):
-        file_extension = file_path[file_path.rfind("."):].lower()
-        loader_class = EXTENSIONS_TO_LOADERS.get(file_extension)
-        if loader_class:
-            return loader_class(file_path=file_path)
-        raise ValueError(f"Unsupported file type: {file_extension}")
-    
-    def _process_file(self, loader):
+
+    def _create_loader(self, file_path: str):
+        file_extension = Path(file_path).suffix.lower()
+        loader_class = self.config.EXTENSIONS_TO_LOADERS.get(file_extension)
+        
+        if not loader_class:
+            raise ValueError(f"Unsupported file type: {file_extension}")
+        
+        return loader_class(file_path=file_path)
+
+    def _process_file(self, loader) -> List[str]:
         try:
             documents = loader.load_and_split(self.text_splitter)
+            if not documents:
+                logger.warning(f"No documents loaded from {loader.file_path}")
+                return []
+
             for doc in documents:
                 doc.metadata['file_path'] = loader.file_path
-            logger.info(f"Loaded {len(documents)} documents.")
-            uuids = (str(uuid.uuid4()) for _ in range(len(documents)))
-            ids = self.document_store.add_documents(documents=documents, ids=list(uuids))
-            logger.info(f"Successfully added {len(ids)} documents.")
+
+            uuids = [str(uuid.uuid4()) for _ in range(len(documents))]
+            ids = self.document_store.add_documents(documents=documents, ids=uuids)
+            
+            logger.info(f"Successfully processed {len(ids)} documents from {loader.file_path}")
             return ids
+            
         except Exception as e:
-            logger.error(f"Error: {e}")
+            logger.error(f"Error processing file {loader.file_path}: {str(e)}")
             return []
 
-    def index(self, message):
+    def index(self, message: Dict[str, str]) -> None:
         path, file_id = message["path"], message["file_id"]
-        logger.info(f"Extracting text from file: {path} with id: {file_id}")
+        logger.info(f"Processing file: {path} (ID: {file_id})")
+        
         try:
             loader = self._create_loader(path)
             ids = self._process_file(loader)
-            logger.info(f"Inserted into vector storage: {path} with ids: {ids}")
+            if ids:
+                logger.info(f"Successfully indexed {path} with IDs: {ids}")
         except Exception as e:
-            logger.error(f"Failed process: {getattr(loader, 'file_path', 'unknown file')}")
+            logger.error(f"Failed to index file {path}: {str(e)}")
 
-    def find(self, query):
+    def find(self, query: str) -> Dict[str, any]:
         try:
-            logger.info(f"Searching for query: {query}")
+            logger.info(f"Searching for: {query}")
             found = self.document_store.search(query, search_type="similarity")
-            logger.info(f"Found {len(found)} results for query: {query}")
+            
+            if not found:
+                logger.info("No results found")
+                return {"links": set(), "output": ""}
+
             links = set()
-            result = ''
+            results = []
+            
             for item in found:
-                logger.info(f"Found item: {item}")
-                path = item.metadata["file_path"].replace(CONTAINER_PATH, LOCAL_FILES_PATH)
-                path = f"file://{path}"
-                links.add(path)
-                result = f"{result}. {item.page_content}" if result else item.page_content
+                path = item.metadata["file_path"].replace(
+                    self.config.CONTAINER_PATH,
+                    self.config.LOCAL_FILES_PATH
+                )
+                links.add(f"file://{path}")
+                results.append(item.page_content)
+
             output = {
                 "links": links,
-                "output": result
+                "output": ". ".join(results)
             }
-            logger.info(f"Returning output: {output}")
+            
+            logger.info(f"Found {len(found)} results")
             return output
+            
         except Exception as e:
-            logger.error(f"Failed to search: {e}")
-            return {"error":'Unabe to find anything for the given query'}
+            logger.error(f"Search failed: {str(e)}")
+            return {"error": "Unable to find anything for the given query"}
+
+    def embed(self, query: str):
+        return self.embed_model.embed_query(query)
