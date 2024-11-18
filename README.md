@@ -25,6 +25,6 @@ Explanation of Variables:
 
 **START_INDEXING**: Set this to ‘true’ on initial startup to begin indexing. Data can be queried while it indexes. Note that reindexing is not yet supported. To reindex, remove the qdrant_data folder (created automatically), set this flag to ‘true,’ and restart the containers. After indexing completes, you can keep the container running or restart without reindexing by setting this flag to ‘false’.
 
-WE ARE PREPARING A CONTAINER FOR CHATGPT ACTIONS USAGE!
+WE ARE PREPARING A CONTAINER FOR CHATGPT ACTIONS USAGE! FOR NOW IGNORE 'linker' CONTAINER AND 'firebase' FOLDER!
 
 Minima (https://github.com/dmayboroda/minima) is licensed under the Mozilla Public License v2.0 (MPLv2).
