@@ -33,7 +33,7 @@ EMBEDDING_SIZE=768
 START_INDEXING=false
 ```
 
-Ollama chatting model - qwen2:0.5b (hard coded, but we will provide you with a model options in next updates)
+Ollama chatting model - **qwen2:0.5b** (hard coded, but we will provide you with a model options in next updates)
 
 WE ARE PREPARING A CONTAINER FOR CHATGPT ACTIONS USAGE! FOR NOW IGNORE 'linker' CONTAINER AND 'firebase' FOLDER!
 
