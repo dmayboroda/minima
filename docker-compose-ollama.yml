@@ -60,12 +60,6 @@ services:
     environment:
       - PYTHONPATH=/usr/src
       - PYTHONUNBUFFERED=TRUE
-      - FIRESTORE_COLLECTION_NAME=${FIRESTORE_COLLECTION_NAME}
-      - GOOGLE_APPLICATION_CREDENTIALS=${FIREBASE_KEY_FILE}
-      - USER_ID=${USER_ID}
-      - PASSWORD=${PASSWORD}
-      - FB_PROJECT=${FB_PROJECT}
-      - TASKS_COLLECTION=${TASKS_COLLECTION}
     depends_on:
       - ollama
       - qdrant
@@ -81,3 +75,4 @@ services:
       - qdrant
       - indexer
       - ollama
+      - llm
