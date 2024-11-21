@@ -40,7 +40,8 @@ Explanation of Variables:
 
 **PASSWORD**: Put any password here, this is used to create a firebase account for the email specified above.
 
-Example of .env file:
+
+Example of .env file for fully local usage:
 ```
 LOCAL_FILES_PATH=/Users/davidmayboroda/Downloads/PDFs/
 EMBEDDING_MODEL_ID=sentence-transformers/all-mpnet-base-v2
@@ -50,6 +51,13 @@ START_INDEXING=false
 
 Ollama chatting model - **qwen2:0.5b** (hard coded, but we will provide you with a model options in next updates)
 
-WE ARE PREPARING A CONTAINER FOR CHATGPT ACTIONS USAGE! FOR NOW IGNORE 'linker' CONTAINER AND 'firebase' FOLDER!
-
+Example of .env file for ChatGPT custom GPT usage:
+```
+LOCAL_FILES_PATH=/Users/davidmayboroda/Downloads/PDFs/
+EMBEDDING_MODEL_ID=sentence-transformers/all-mpnet-base-v2
+EMBEDDING_SIZE=768
+START_INDEXING=false
+USER_ID=user@gmail.com # your real email
+PASSWORD=password # you can create here password that you want
+```
 Minima (https://github.com/dmayboroda/minima) is licensed under the Mozilla Public License v2.0 (MPLv2).
