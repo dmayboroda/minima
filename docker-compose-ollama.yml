@@ -1,6 +1,23 @@
 version: '3.9'
 services:
 
+  ollama:
+    image: ollama/ollama:latest
+    restart: always
+    container_name: ollama
+    ports:
+      - 11434:11434
+    expose:
+      - 11434
+    volumes:
+      - ./ollama:/root/.ollama
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "ollama serve &
+      sleep 10 &&
+      ollama pull qwen2:0.5b &&
+      wait"
+
   qdrant:
     image: qdrant/qdrant:latest
     restart: always
@@ -34,6 +51,26 @@ services:
     depends_on:
       - qdrant
 
+  llm:
+    build: ./llm
+    volumes:
+      - ./llm:/usr/src/app
+    ports:
+      - 8003:8000
+    environment:
+      - PYTHONPATH=/usr/src
+      - PYTHONUNBUFFERED=TRUE
+      - FIRESTORE_COLLECTION_NAME=${FIRESTORE_COLLECTION_NAME}
+      - GOOGLE_APPLICATION_CREDENTIALS=${FIREBASE_KEY_FILE}
+      - USER_ID=${USER_ID}
+      - PASSWORD=${PASSWORD}
+      - FB_PROJECT=${FB_PROJECT}
+      - TASKS_COLLECTION=${TASKS_COLLECTION}
+    depends_on:
+      - ollama
+      - qdrant
+      - indexer
+
   nginx-reverse-proxy:
     image: nginx:latest
     ports:
@@ -43,20 +80,4 @@ services:
     depends_on:
       - qdrant
       - indexer
-
-  linker:
-    build: ./linker
-    volumes:
-      - ./linker:/usr/src/app
-    ports:
-      - 8002:8000
-    environment:
-      - PYTHONPATH=/usr/src
-      - PYTHONUNBUFFERED=TRUE
-      - FIRESTORE_COLLECTION_NAME=userTasks
-      - TASKS_COLLECTION=tasks
-      - USER_ID=${USER_ID}
-      - PASSWORD=${PASSWORD}
-      - FB_PROJECT=localragex
-    depends_on:
-      - qdrant
+      - ollama

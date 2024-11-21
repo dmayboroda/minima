@@ -3,4 +3,5 @@ google-cloud-firestore
 firebase_admin
 asyncio==3.4.3
 fastapi==0.111.0
+requests==2.32.3
 uvicorn[standard]

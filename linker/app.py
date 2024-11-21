@@ -1,30 +1,65 @@
 import os
 import logging
 import asyncio
-import firebase_admin
+import random
+import string
 from fastapi import FastAPI
 from requestor import request_data
 from contextlib import asynccontextmanager
-from firebase_admin import credentials, firestore
+
+import json
+import requests
+
+from requests.exceptions import HTTPError
+from google.oauth2.credentials import Credentials
+from google.cloud.firestore import Client
+
+
+def sign_in_with_email_and_password(email, password):
+    request_url = "https://signinaction-xl7gclbspq-uc.a.run.app"
+    headers = {"content-type": "application/json; charset=UTF-8"}
+    data = json.dumps({"login": email, "password": password})
+    req = requests.post(request_url, headers=headers, data=data)
+    try:
+        req.raise_for_status()
+    except HTTPError as e:
+        raise HTTPError(e, "error")
+    return req.json()
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+USERS_COLLECTION_NAME = "users_otp"
 COLLECTION_NAME = os.environ.get("FIRESTORE_COLLECTION_NAME")
 TASKS_COLLECTION = os.environ.get("TASKS_COLLECTION")
-FIREBASE_KEY_FILE = os.environ.get("FIREBASE_KEY_FILE")
 USER_ID = os.environ.get("USER_ID")
+PASSWORD = os.environ.get("PASSWORD")
+FB_PROJECT = os.environ.get("FB_PROJECT")
 
 app = FastAPI()
+response = sign_in_with_email_and_password(USER_ID, PASSWORD)
+creds = Credentials(response["idToken"], response["refreshToken"])
+# noinspection PyTypeChecker
+db = Client(FB_PROJECT, creds)
 
-cred = credentials.Certificate(FIREBASE_KEY_FILE)
-firebase_admin.initialize_app(cred)
-
-db = firestore.client()
 
 async def poll_firestore():
     logger.info(f"Polling Firestore collection: {COLLECTION_NAME}")
+    random_otp = ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
+    doc_ref = db.collection(USERS_COLLECTION_NAME).document(USER_ID)
+    try:
+        doc_ref.update({'otp': random_otp})
+    except Exception as e:
+        print("The error is: ", e)
+
+    if doc_ref.get().exists:
+        doc_ref.update({'otp': random_otp})
+    else:
+        doc_ref.create({'otp': random_otp})
+    
     while True:
+        print(f"OTP for this computer in Minima GPT: {random_otp}")
         try:
             docs = db.collection(COLLECTION_NAME).document(USER_ID).collection(TASKS_COLLECTION).stream()
             for doc in docs:
