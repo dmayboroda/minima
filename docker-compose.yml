@@ -34,16 +34,6 @@ services:
     depends_on:
       - qdrant
 
-  nginx-reverse-proxy:
-    image: nginx:latest
-    ports:
-      - 8080:8080
-    volumes:
-      - ./nginx_config.conf:/etc/nginx/conf.d/default.conf
-    depends_on:
-      - qdrant
-      - indexer
-
   linker:
     build: ./linker
     volumes:
@@ -60,3 +50,14 @@ services:
       - FB_PROJECT=localragex
     depends_on:
       - qdrant
+
+  nginx-reverse-proxy:
+    image: nginx:latest
+    ports:
+      - 8080:8080
+    volumes:
+      - ./nginx_config.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - qdrant
+      - indexer
+      - linker
