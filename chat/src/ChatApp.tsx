@@ -13,7 +13,7 @@ const ChatApp: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
 
     useEffect(() => {
-        const webSocket = new WebSocket('ws://llm:8000/llm/');
+        const webSocket = new WebSocket('ws://localhost:8003/llm/');
         webSocket.onmessage = (message) => {
             const message_curr: Message = JSON.parse(message.data);
             if (message_curr.reporter === 'output_message') {

@@ -65,16 +65,16 @@ services:
       - qdrant
       - indexer
 
-  chat:
-    build: ./chat
-    volumes:
-      - ./chat:/usr/src/app
-    ports:
-      - 3000:3000
-    depends_on:
-      - ollama
-      - qdrant
-      - llm
+  # chat:
+  #   build: ./chat
+  #   volumes:
+  #     - ./chat:/usr/src/app
+  #   ports:
+  #     - 3000:3000
+  #   depends_on:
+  #     - ollama
+  #     - qdrant
+  #     - llm
 
   nginx-reverse-proxy:
     image: nginx:latest
