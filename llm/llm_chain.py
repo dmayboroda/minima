@@ -2,7 +2,8 @@ import uuid
 import torch
 import datetime
 import logging
-from typing import Sequence
+from dataclasses import dataclass
+from typing import Sequence, Optional
 from qdrant_client import QdrantClient
 from langchain_ollama import ChatOllama
 from minima_embed import MinimaEmbeddings
@@ -41,86 +42,99 @@ SYSTEM_PROMPT = (
     "{context}"
 )
 
-QDRANT_COLLECTION = "mnm_storage"
-QDRANT_BOOTSTRAP = "qdrant"
-OLLAMA_MODEL = "qwen2:0.5b"
-RERANK_MODEL = "BAAI/bge-reranker-base"
-DEVICE = torch.device(
+@dataclass
+class LLMConfig:
+    """Configuration settings for the LLM Chain"""
+    qdrant_collection: str = "mnm_storage"
+    qdrant_host: str = "qdrant"
+    ollama_url: str = "http://ollama:11434"
+    ollama_model: str = "qwen2:0.5b"
+    rerank_model: str = "BAAI/bge-reranker-base"
+    temperature: float = 0.5
+    device: torch.device = torch.device(
         "mps" if torch.backends.mps.is_available() else
         "cuda" if torch.cuda.is_available() else
         "cpu"
     )
 
 class State(TypedDict):
+    """State definition for the LLM Chain"""
     input: str
     chat_history: Annotated[Sequence[BaseMessage], add_messages]
     context: str
     answer: str
 
 class LLMChain:
-    def __init__(self):
-        llm = ChatOllama(
-            base_url="http://ollama:11434",
-            model=OLLAMA_MODEL,
-            temperature=0.5
-        )
-        qdrant = QdrantClient(host=QDRANT_BOOTSTRAP)
-        
-        embed_model = MinimaEmbeddings()
+    """A chain for processing LLM queries with context awareness and retrieval capabilities"""
 
-        self.document_store = QdrantVectorStore(
+    def __init__(self, config: Optional[LLMConfig] = None):
+        """Initialize the LLM Chain with optional custom configuration"""
+        self.config = config or LLMConfig()
+        self.llm = self._setup_llm()
+        self.document_store = self._setup_document_store()
+        self.chain = self._setup_chain()
+        self.graph = self._create_graph()
+
+    def _setup_llm(self) -> ChatOllama:
+        """Initialize the LLM model"""
+        return ChatOllama(
+            base_url=self.config.ollama_url,
+            model=self.config.ollama_model,
+            temperature=self.config.temperature
+        )
+
+    def _setup_document_store(self) -> QdrantVectorStore:
+        """Initialize the document store with vector embeddings"""
+        qdrant = QdrantClient(host=self.config.qdrant_host)
+        embed_model = MinimaEmbeddings()
+        return QdrantVectorStore(
             client=qdrant,
-            collection_name=QDRANT_COLLECTION,
+            collection_name=self.config.qdrant_collection,
             embedding=embed_model
         )
 
-        contextualize_q_prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", CONTEXTUALIZE_Q_SYSTEM_PROMPT),
-                MessagesPlaceholder("chat_history"),
-                ("human", "{input}"),
-            ]
+    def _setup_chain(self):
+        """Set up the retrieval and QA chain"""
+        # Initialize retriever with reranking
+        base_retriever = self.document_store.as_retriever()
+        reranker = HuggingFaceCrossEncoder(
+            model_name=self.config.rerank_model,
+            model_kwargs={'device': self.config.device},
         )
-
-        retriever = self.document_store.as_retriever()
-
-        rerank_model = HuggingFaceCrossEncoder(
-            model_name=RERANK_MODEL,
-            model_kwargs={'device': DEVICE},
-        )
-
-        compressor = CrossEncoderReranker(model=rerank_model, top_n=3)
-
         compression_retriever = ContextualCompressionRetriever(
-            base_compressor=compressor, base_retriever=retriever
+            base_compressor=CrossEncoderReranker(model=reranker, top_n=3),
+            base_retriever=base_retriever
         )
 
+        # Create history-aware retriever
+        contextualize_prompt = ChatPromptTemplate.from_messages([
+            ("system", CONTEXTUALIZE_Q_SYSTEM_PROMPT),
+            MessagesPlaceholder("chat_history"),
+            ("human", "{input}"),
+        ])
         history_aware_retriever = create_history_aware_retriever(
-            llm, compression_retriever, contextualize_q_prompt
+            self.llm, compression_retriever, contextualize_prompt
         )
 
-        qa_prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", SYSTEM_PROMPT),
-                MessagesPlaceholder("chat_history"),
-                ("human", "{input}"),
-            ]
-        )
-
-        question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
-        self.chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
-        self.graph = self._create_graph()
+        # Create QA chain
+        qa_prompt = ChatPromptTemplate.from_messages([
+            ("system", SYSTEM_PROMPT),
+            MessagesPlaceholder("chat_history"),
+            ("human", "{input}"),
+        ])
+        qa_chain = create_stuff_documents_chain(self.llm, qa_prompt)
+        
+        return create_retrieval_chain(history_aware_retriever, qa_chain)
 
     def _create_graph(self) -> StateGraph:
+        """Create the processing graph"""
         workflow = StateGraph(state_schema=State)
         workflow.add_edge(START, "model")
         workflow.add_node("model", self._call_model)
-        memory = MemorySaver()
-        app = workflow.compile(checkpointer=memory)
-        logger.info("Graph created.")
-        return app
+        return workflow.compile(checkpointer=MemorySaver())
 
-    def _call_model(self, state: State):
+    def _call_model(self, state: State) -> dict:
+        """Process the query through the model"""
         logger.info(f"Processing query: {state['input']}")
         response = self.chain.invoke(state)
         logger.info(f"Received response: {response['answer']}")
@@ -133,7 +147,16 @@ class LLMChain:
             "answer": response["answer"],
         }
     
-    def invoke(self, message: str):
+    def invoke(self, message: str) -> dict:
+        """
+        Process a user message and return the response
+        
+        Args:
+            message: The user's input message
+            
+        Returns:
+            dict: Contains the model's response or error information
+        """
         try:
             logger.info(f"Processing query: {message}")
             config = {
@@ -149,5 +172,5 @@ class LLMChain:
             logger.info(f"OUTPUT: {result}")
             return result["answer"]
         except Exception as e:
-            logger.error(f"Error in processing query: {e}")
-            return {"error": str(e)}
+            logger.error(f"Error processing query", exc_info=True)
+            return {"error": str(e), "status": "error"}

@@ -10,8 +10,9 @@ logger = logging.getLogger("chat")
 async def loop(
         questions_queue: AsyncQueue,
         response_queue: AsyncQueue,
-        llm_chain: LLMChain
 ):
+
+    llm_chain = LLMChain()
 
     while True:
         data = await questions_queue.dequeue()

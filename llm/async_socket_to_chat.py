@@ -6,7 +6,7 @@ import starlette.websockets as ws
 import control_flow_commands as cfc
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("chat")
+logger = logging.getLogger("llm")
 
 async def loop(
     websocket: WebSocket, 
