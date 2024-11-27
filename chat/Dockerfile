@@ -8,12 +8,16 @@ RUN npm install
 
 COPY . .
 
-RUN npm run start
-
-FROM nginx:alpine
-
-COPY --from=build /app/build /usr/share/nginx/html
+RUN npm run build
 
 EXPOSE 3000
 
-CMD ["nginx", "-g", "daemon off;"] 
+CMD ["npm", "run", "start"] 
+
+# FROM nginx:alpine
+
+# COPY --from=build /app/build /usr/share/nginx/html
+
+# EXPOSE 3000
+
+# CMD ["nginx", "-g", "daemon off;"] 
