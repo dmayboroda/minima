@@ -1,8 +1,7 @@
-import os
 import uuid
+import torch
 import datetime
 import logging
-from langchain import hub
 from typing import Sequence
 from qdrant_client import QdrantClient
 from langchain_ollama import ChatOllama
@@ -15,8 +14,11 @@ from typing_extensions import Annotated, TypedDict
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain.chains.retrieval import create_retrieval_chain
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import CrossEncoderReranker
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_community.cross_encoders.huggingface import HuggingFaceCrossEncoder
 from langchain.chains.history_aware_retriever import create_history_aware_retriever
 
 logger = logging.getLogger(__name__)
@@ -42,6 +44,12 @@ SYSTEM_PROMPT = (
 QDRANT_COLLECTION = "mnm_storage"
 QDRANT_BOOTSTRAP = "qdrant"
 OLLAMA_MODEL = "qwen2:0.5b"
+RERANK_MODEL = "BAAI/bge-reranker-base"
+DEVICE = torch.device(
+        "mps" if torch.backends.mps.is_available() else
+        "cuda" if torch.cuda.is_available() else
+        "cpu"
+    )
 
 class State(TypedDict):
     input: str
@@ -74,8 +82,21 @@ class LLMChain:
             ]
         )
 
+        retriever = self.document_store.as_retriever()
+
+        rerank_model = HuggingFaceCrossEncoder(
+            model_name=RERANK_MODEL,
+            model_kwargs={'device': DEVICE},
+        )
+
+        compressor = CrossEncoderReranker(model=rerank_model, top_n=3)
+
+        compression_retriever = ContextualCompressionRetriever(
+            base_compressor=compressor, base_retriever=retriever
+        )
+
         history_aware_retriever = create_history_aware_retriever(
-            llm, self.document_store.as_retriever(), contextualize_q_prompt
+            llm, compression_retriever, contextualize_q_prompt
         )
 
         qa_prompt = ChatPromptTemplate.from_messages(
@@ -125,6 +146,7 @@ class LLMChain:
                 {"input": message},
                 config=config
             )
+            logger.info(f"OUTPUT: {result}")
             return result["answer"]
         except Exception as e:
             logger.error(f"Error in processing query: {e}")

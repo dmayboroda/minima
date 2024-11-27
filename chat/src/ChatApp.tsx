@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TextField, Button, List, ListItem, ListItemText, Box, AppBar, Toolbar, Typography } from '@mui/material';
+import { TextField, List, ListItem, ListItemText, Box, AppBar, Toolbar, Typography } from '@mui/material';
 
 interface Message {
     type: 'answer' | 'question' | 'full',
@@ -79,7 +79,7 @@ const ChatApp: React.FC = () => {
                 <Toolbar>
 
                     <Typography variant="h5" color="inherit" noWrap>
-                        Chat
+                        Minima
                     </Typography>
                 </Toolbar>
             </AppBar>
@@ -173,9 +173,6 @@ const ChatApp: React.FC = () => {
                         },
                     }}
                 />
-                <Button variant="contained" color="primary" onClick={sendMessage} style={{ marginLeft: 16 }}>
-                    Send
-                </Button>
             </Box>
         </div >
     );

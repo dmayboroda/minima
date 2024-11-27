@@ -2,6 +2,7 @@ import logging
 import asyncio
 from fastapi import FastAPI
 from fastapi import WebSocket
+from llm_chain import LLMChain
 from async_queue import AsyncQueue
 
 import async_socket_to_chat
@@ -13,6 +14,8 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("llm")
 
+llm_chain = LLMChain()
+
 @app.websocket("/llm/")
 async def chat_client(websocket: WebSocket):
 
@@ -20,7 +23,7 @@ async def chat_client(websocket: WebSocket):
     response_queue = AsyncQueue()
 
     answer_to_socket_promise = async_answer_to_socket.loop(response_queue, websocket)
-    question_to_answer_promise = async_question_to_answer.loop(question_queue, response_queue)
+    question_to_answer_promise = async_question_to_answer.loop(question_queue, response_queue, llm_chain)
     socket_to_chat_promise = async_socket_to_chat.loop(websocket, question_queue, response_queue)
 
     await asyncio.gather(

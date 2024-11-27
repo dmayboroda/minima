@@ -11,7 +11,7 @@ from async_loop import index_loop, crawl_loop
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-START_INDEXING = os.environ.get('START_INDEXING').lower()
+START_INDEXING = os.environ.get('START_INDEXING').lower() == 'true'
 
 indexer = Indexer()
 async_queue = AsyncQueue()
