@@ -50,11 +50,7 @@ START_INDEXING=false # true on the first run for indexing
 ```
 
 Ollama chatting model - **qwen2:0.5b** (hard coded, but we will provide you with a model options in next updates)
-To run a chat UI, please navigate to **/chat** folder and run following commands:
-```
-npm install
-npm start
-```
+To use a chat ui, please navigate to **http://localhost:3000**
 
 Example of .env file for ChatGPT custom GPT usage:
 ```
