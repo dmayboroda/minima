@@ -11,7 +11,7 @@ from async_loop import index_loop, crawl_loop
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-START_INDEXING = os.getenv('START_INDEXING', 'false').lower() == 'true'
+START_INDEXING = os.environ.get('START_INDEXING').lower()
 
 indexer = Indexer()
 async_queue = AsyncQueue()
@@ -52,6 +52,7 @@ async def embedding(request: Query):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     tasks = []
+    logger.info(f"Start indexing: {START_INDEXING}")
     try:
         if START_INDEXING:
             tasks.extend([
