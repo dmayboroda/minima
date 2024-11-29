@@ -10,16 +10,16 @@ class AsyncQueueDequeueInterrupted(Exception):
 class AsyncQueue:
     def __init__(self) -> None:
         self._data = deque([])
-        self._presense_of_data = asyncio.Event()
+        self._presence_of_data = asyncio.Event()
 
     def enqueue(self, value):
         self._data.append(value)
 
         if len(self._data) == 1:
-            self._presense_of_data.set()
+            self._presence_of_data.set()
 
     async def dequeue(self):
-        await self._presense_of_data.wait()
+        await self._presence_of_data.wait()
 
         if len(self._data) < 1:
             raise AsyncQueueDequeueInterrupted("AsyncQueue was dequeue was interrupted")
@@ -27,7 +27,7 @@ class AsyncQueue:
         result = self._data.popleft()
 
         if not self._data:
-            self._presense_of_data.clear()
+            self._presence_of_data.clear()
 
         return result
 
@@ -36,4 +36,4 @@ class AsyncQueue:
         return result
 
     def shutdown(self):
-        self._presense_of_data.set()
+        self._presence_of_data.set()
