@@ -1,6 +1,9 @@
-**Minima** is an open source fully local RAG.
+**Minima** is an open source fully local RAG, with ability to integrate with ChatGPT and MCP. 
+Minima can also be used as a RAG on-premises.
 
-Minima supports 2 modes right now. You can use fully local (minimal) installation or you can use custom GPT to query your local documents via chat GPT.
+Minima supports 3 modes right now. You can use fully local (minimal) installation, you can use Custom GPT to query your local documents via ChatGPT and use an Anthropic Claude for for querying local files.
+
+**For MCP usage, please be sure that your local machines python is >=3.10 and 'uv' installed.**
 
 1. Create a .env file in the project’s root directory (where you’ll find env.sample). Place .env in the same folder and copy all environment variables from env.sample to .env.
 
@@ -10,21 +13,37 @@ Minima supports 2 modes right now. You can use fully local (minimal) installatio
    <li> EMBEDDING_MODEL_ID </li>
    <li> EMBEDDING_SIZE</li>
    <li> START_INDEXING </li>
-<li> USER_ID </li> - required for chat GPT integration, just use your email
-<li> PASSWORD </li> - required for chat GPT integration, just use any password
+<li> USER_ID </li> - required for ChatGPT integration, just use your email
+<li> PASSWORD </li> - required for ChatGPT integration, just use any password
 </ul>
 
-3. For fully local installation use: docker compose -f docker-compose-ollama.yml --env-file .env up --build.
+3. For fully local installation use: **docker compose -f docker-compose-ollama.yml --env-file .env up --build**.
 
-4. For chat GPT enabled installation use: docker compose --env-file .env up --build.
+4. For ChatGPT enabled installation use: **docker compose -f docker-compose-chatgpt.yml --env-file .env up --build**.
 
-5. For fully local installation, connect to **ws://localhost:8003/llm/** to start a conversation with LLM.
+5. For MCP integration (Anthropic Desktop app usage): **docker compose -f docker-compose-mcp.yml --env-file .env up --build**.
 
-6. For chat GPT enabled installation copy OTP from terminal where you launched docker and use [Minima GPT](https://chatgpt.com/g/g-r1MNTSb0Q-minima-local-computer-search)  
+6. In case of ChatGPT enabled installation copy OTP from terminal where you launched docker and use [Minima GPT](https://chatgpt.com/g/g-r1MNTSb0Q-minima-local-computer-search)  
+
+7. If you use Anthropic Claude, just add folliwing to **/Library/Application\ Support/Claude/claude_desktop_config.json**
+
+```
+{
+    "mcpServers": {
+      "minima": {
+        "command": "uv",
+        "args": [
+          "--directory",
+          "/path_to_cloned_minima_project/mcp-server",
+          "run",
+          "minima"
+        ]
+      }
+    }
+  }
+```
    
-7. Ask anything, and you'll get answers based on local files in {LOCAL_FILES_PATH} folder.
-
-
+8. Ask anything, and you'll get answers based on local files in {LOCAL_FILES_PATH} folder.
 
 Explanation of Variables:
 
@@ -64,4 +83,7 @@ START_INDEXING=false
 USER_ID=user@gmail.com # your real email
 PASSWORD=password # you can create here password that you want
 ```
+
+Also, you can run minima using **run.sh**.
+
 Minima (https://github.com/dmayboroda/minima) is licensed under the Mozilla Public License v2.0 (MPLv2).

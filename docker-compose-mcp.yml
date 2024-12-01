@@ -1,0 +1,40 @@
+version: '3.9'
+services:
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - 6333:6333
+      - 6334:6334
+    expose:
+      - 6333
+      - 6334
+      - 6335
+    volumes:
+      - ./qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__LOG_LEVEL: "INFO"
+
+  indexer:
+    build: 
+      context: ./indexer
+      dockerfile: Dockerfile
+      args:
+        EMBEDDING_MODEL_ID: ${EMBEDDING_MODEL_ID}
+        EMBEDDING_SIZE: ${EMBEDDING_SIZE}
+        START_INDEXING: ${START_INDEXING}
+    volumes:
+      - ${LOCAL_FILES_PATH}:/usr/src/app/local_files/
+      - ./indexer:/usr/src/app
+    ports:
+      - 8001:8000
+    environment:
+      - PYTHONPATH=/usr/src
+      - PYTHONUNBUFFERED=TRUE
+      - LOCAL_FILES_PATH=${LOCAL_FILES_PATH}
+      - EMBEDDING_MODEL_ID=${EMBEDDING_MODEL_ID}
+      - EMBEDDING_SIZE=${EMBEDDING_SIZE}
+      - START_INDEXING=${START_INDEXING}
+    depends_on:
+      - qdrant

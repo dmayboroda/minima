@@ -1,0 +1,21 @@
+[project]
+name = "minima"
+version = "0.0.1"
+description = "RAG on local files with MCP"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+ "httpx>=0.28.0",
+ "mcp>=1.0.0",
+ "pydantic>=2.10.2",
+]
+[[project.authors]]
+name = "David Mayboroda"
+email = "david.ftzi@gmail.com"
+
+[build-system]
+requires = [ "hatchling",]
+build-backend = "hatchling.build"
+
+[project.scripts]
+minima = "minima:main"
