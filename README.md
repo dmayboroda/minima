@@ -60,7 +60,7 @@ Explanation of Variables:
 **PASSWORD**: Put any password here, this is used to create a firebase account for the email specified above.
 
 
-Example of .env file for fully local usage:
+Example of .env file for fully local usage and MCP usage:
 ```
 LOCAL_FILES_PATH=/Users/davidmayboroda/Downloads/PDFs/
 EMBEDDING_MODEL_ID=sentence-transformers/all-mpnet-base-v2
