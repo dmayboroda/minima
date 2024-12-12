@@ -1,7 +1,12 @@
-**Minima** is an open source fully local RAG, with ability to integrate with ChatGPT and MCP. 
-Minima can also be used as a RAG on-premises.
+**Minima** is an open source RAG on-premises containers, with ability to integrate with ChatGPT and MCP. 
+Minima can also be used as a fully local RAG.
 
-Minima supports 3 modes right now. You can use fully local (minimal) installation, you can use Custom GPT to query your local documents via ChatGPT and use an Anthropic Claude for for querying local files.
+Minima currently supports three modes:
+1. Isolated installation – Operate fully on-premises with containers, free from external dependencies such as ChatGPT or Claude. All neural networks (LLM, reranker, embedding) run on your cloud or PC, ensuring your data remains secure.
+
+2. Custom GPT – Query your local documents using ChatGPT app or web with custom GPTs. The indexer running on your cloud or local PC, while the primary LLM remains ChatGPT.
+
+3. Anthropic Claude – Use Anthropic Claude app to query your local documents. The indexer operates on your local PC, while Anthropic Claude serves as the primary LLM.
 
 **For MCP usage, please be sure that your local machines python is >=3.10 and 'uv' installed.**
 
@@ -11,10 +16,12 @@ Minima supports 3 modes right now. You can use fully local (minimal) installatio
 <ul>
    <li> LOCAL_FILES_PATH </li>
    <li> EMBEDDING_MODEL_ID </li>
-   <li> EMBEDDING_SIZE</li>
+   <li> EMBEDDING_SIZE </li>
    <li> START_INDEXING </li>
-<li> USER_ID </li> - required for ChatGPT integration, just use your email
-<li> PASSWORD </li> - required for ChatGPT integration, just use any password
+   <li> OLLAMA_MODEL </li>
+   <li> RERANKER_MODEL </li>
+   <li> USER_ID </li> - required for ChatGPT integration, just use your email
+   <li> PASSWORD </li> - required for ChatGPT integration, just use any password
 </ul>
 
 3. For fully local installation use: **docker compose -f docker-compose-ollama.yml --env-file .env up --build**.
@@ -55,24 +62,35 @@ Explanation of Variables:
 
 **START_INDEXING**: Set this to ‘true’ on initial startup to begin indexing. Data can be queried while it indexes. Note that reindexing is not yet supported. To reindex, remove the qdrant_data folder (created automatically), set this flag to ‘true,’ and restart the containers. After indexing completes, you can keep the container running or restart without reindexing by setting this flag to ‘false’.
 
+**OLLAMA_MODEL**: Set up the Ollama model, use an ID available on the Ollama [site](https://ollama.com/search). Please, use LLM model here, not an embedding.
+
+**RERANKER_MODEL**: Specify the reranker model. Currently, we have tested with BAAI rerankers. You can explore all available rerankers using this [link](https://huggingface.co/collections/BAAI/).
+
 **USER_ID**: Just use your email here, this is needed to authenticate custom GPT to search in your data.
 
 **PASSWORD**: Put any password here, this is used to create a firebase account for the email specified above.
 
 
-Example of .env file for fully local usage and MCP usage:
+Example of .env file for on-premises/local usage:
+```
+LOCAL_FILES_PATH=/Users/davidmayboroda/Downloads/PDFs/
+EMBEDDING_MODEL_ID=sentence-transformers/all-mpnet-base-v2
+EMBEDDING_SIZE=768
+START_INDEXING=false # true on the first run for indexing
+OLLAMA_MODEL=qwen2:0.5b # must be LLM model id from Ollama models page
+RERANKER_MODEL=BAAI/bge-reranker-base # please, choose any BAAI reranker model
+```
+
+To use a chat ui, please navigate to **http://localhost:3000**
+
+Example of .env file for Claude app:
 ```
 LOCAL_FILES_PATH=/Users/davidmayboroda/Downloads/PDFs/
 EMBEDDING_MODEL_ID=sentence-transformers/all-mpnet-base-v2
 EMBEDDING_SIZE=768
 START_INDEXING=false # true on the first run for indexing
 ```
-
-Ollama chatting model - **qwen2:0.5b** (hard coded, but we will provide you with a model options in next updates)
-
-Rerank model - **BAAI/bge-reranker-base** (used for both configurations: fully local and custom GPT)
-
-To use a chat ui, please navigate to **http://localhost:3000**
+For the Claude app, please apply the changes to the claude_desktop_config.json file as outlined above.
 
 Example of .env file for ChatGPT custom GPT usage:
 ```

@@ -11,10 +11,12 @@ services:
     volumes:
       - ./ollama:/root/.ollama
     entrypoint: ["/bin/sh", "-c"]
+    environment:
+      - OLLAMA_MODEL=${OLLAMA_MODEL}
     command: >
       "ollama serve &
       sleep 10 &&
-      ollama pull qwen2:0.5b &&
+      ollama pull ${OLLAMA_MODEL} &&
       wait"
 
   qdrant:
@@ -56,7 +58,11 @@ services:
       - qdrant
 
   llm:
-    build: ./llm
+    build: 
+      context: ././llm
+      dockerfile: Dockerfile
+      args:
+        RERANKER_MODEL: ${RERANKER_MODEL}
     volumes:
       - ./llm:/usr/src/app
     ports:
@@ -64,6 +70,8 @@ services:
     environment:
       - PYTHONPATH=/usr/src
       - PYTHONUNBUFFERED=TRUE
+      - OLLAMA_MODEL=${OLLAMA_MODEL}
+      - RERANKER_MODEL=${RERANKER_MODEL}
     depends_on:
       - ollama
       - qdrant
