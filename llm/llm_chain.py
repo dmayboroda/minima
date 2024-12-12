@@ -1,3 +1,4 @@
+import os
 import uuid
 import torch
 import datetime
@@ -48,8 +49,8 @@ class LLMConfig:
     qdrant_collection: str = "mnm_storage"
     qdrant_host: str = "qdrant"
     ollama_url: str = "http://ollama:11434"
-    ollama_model: str = "qwen2:0.5b"
-    rerank_model: str = "BAAI/bge-reranker-base"
+    ollama_model: str = os.environ.get("OLLAMA_MODEL")
+    rerank_model: str = os.environ.get("RERANKER_MODEL")
     temperature: float = 0.5
     device: torch.device = torch.device(
         "mps" if torch.backends.mps.is_available() else
