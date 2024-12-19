@@ -50,7 +50,9 @@ Minima currently supports three modes:
   }
 ```
    
-8. Ask anything, and you'll get answers based on local files in {LOCAL_FILES_PATH} folder.
+8. To use fully local installation go to `cd electron`, then run `npm install` and `npm start` which will launch Minima electron app.
+
+9. Ask anything, and you'll get answers based on local files in {LOCAL_FILES_PATH} folder.
 
 Explanation of Variables:
 

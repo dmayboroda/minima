@@ -1,0 +1,22 @@
+{
+  "name": "minima-app",
+  "productName": "Minima",
+  "version": "1.0.0",
+  "description": "Minima is your local AI search app. Chat with your documents, photos and more.",
+  "main": "main.js",
+  
+  "scripts": {
+    "start": "electron .",
+    "package-mac": "npx electron-packager . --overwrite --platform=darwin --arch=x64 --icon=assets/icons/mac/favicon.icns --prune=true --out=release-builds",
+    "package-win": "npx electron-packager . --overwrite --asar=true --platform=win32 --arch=x64 --icon=assets/icons/win/favicon.ico --prune=true --out=release-builds --version-string.CompanyName=CE --version-string.FileDescription=CE --version-string.ProductName=\"Minima\"",
+    "package-linux": "npx electron-packager . --overwrite --platform=linux --arch=x64 --icon=assets/icons/png/favicon.png --prune=true --out=release-builds"
+   },
+
+  "repository": "https://github.com/dmayboroda/minima",
+  "author": "Minima team",
+  "license": "MPLv2",
+
+  "devDependencies": {
+    "electron": "^22.0.0"
+  }
+}
