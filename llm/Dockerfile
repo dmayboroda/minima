@@ -10,6 +10,9 @@ RUN pip install huggingface_hub
 RUN huggingface-cli download $RERANKER_MODEL --repo-type model
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
+RUN apt-get update && apt-get install -y curl
+COPY ./wait-for-it.sh /usr/local/bin/wait-for-it.sh
+RUN chmod +x /usr/local/bin/wait-for-it.sh
 
 ENV PORT 8000
 ENV CURRENT_HOST 0.0.0.0
