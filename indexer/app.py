@@ -5,6 +5,7 @@ from indexer import Indexer
 from pydantic import BaseModel
 from async_queue import AsyncQueue
 from fastapi import FastAPI, APIRouter
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from async_loop import index_loop, crawl_loop
 
@@ -19,6 +20,34 @@ router = APIRouter()
 
 class Query(BaseModel):
     query: str
+
+@router.get(
+    "/health",
+    response_description="Health check",
+    status_code=200,
+)
+async def health():
+    try:
+        result = indexer.find("Indexer healthy")
+        if not result:
+            return JSONResponse(
+                status_code=500,
+                content={"status": "error", "detail": "Indexer is not healthy"},
+            )
+        
+        return JSONResponse(
+            status_code=200,
+            content={"status": "ok", "detail": "Indexer is healthy"},
+        )
+    
+    except Exception as e:
+        logger.error(f"Error during health check: {e}")
+        
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "detail": str(e)},
+        )
+    
 
 @router.post(
     "/query", 

@@ -46,7 +46,7 @@ services:
       - ${LOCAL_FILES_PATH}:/usr/src/app/local_files/
       - ./indexer:/usr/src/app
     ports:
-      - 8001:8000
+      - 8001:8001
     environment:
       - PYTHONPATH=/usr/src
       - PYTHONUNBUFFERED=TRUE
@@ -54,6 +54,11 @@ services:
       - EMBEDDING_MODEL_ID=${EMBEDDING_MODEL_ID}
       - EMBEDDING_SIZE=${EMBEDDING_SIZE}
       - START_INDEXING=${START_INDEXING}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     depends_on:
       - qdrant
 
@@ -66,7 +71,7 @@ services:
     volumes:
       - ./llm:/usr/src/app
     ports:
-      - 8003:8000
+      - 8003:8003
     environment:
       - PYTHONPATH=/usr/src
       - PYTHONUNBUFFERED=TRUE
@@ -76,6 +81,7 @@ services:
       - ollama
       - qdrant
       - indexer
+    entrypoint: ["./wait-for-it.sh", "http://indexer:8001/health", "60", "--", "python", "app.py"]
 
   chat:
     build: ./chat
