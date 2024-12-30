@@ -1,47 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import {TextField, List, ListItem, ListItemText, Box, AppBar, Toolbar, Typography, Link} from '@mui/material';
+import {
+    Layout,
+    Typography,
+    List as AntList,
+    Input,
+    ConfigProvider,
+    Switch,
+    theme,
+    Button,
+} from 'antd';
+import { ArrowRightOutlined } from '@ant-design/icons';
+
+const { Header, Content, Footer } = Layout;
+const { TextArea } = Input;
+const { Link: AntLink, Paragraph, Title } = Typography;
+const { defaultAlgorithm, darkAlgorithm } = theme;
 
 interface Message {
-    type: 'answer' | 'question' | 'full',
-    reporter: 'output_message' | 'user',
-    message: string,
-    links: string[]
+    type: 'answer' | 'question' | 'full';
+    reporter: 'output_message' | 'user';
+    message: string;
+    links: string[];
 }
 
 const ChatApp: React.FC = () => {
     const [ws, setWs] = useState<WebSocket | null>(null);
     const [input, setInput] = useState<string>('');
     const [messages, setMessages] = useState<Message[]>([]);
+    const [isDarkMode, setIsDarkMode] = useState(false);
 
+    // Toggle light/dark theme
+    const toggleTheme = () => setIsDarkMode((prev) => !prev);
+
+    // WebSocket Setup
     useEffect(() => {
         const webSocket = new WebSocket('ws://localhost:8003/llm/');
-        webSocket.onmessage = (message) => {
-            const message_curr: Message = JSON.parse(message.data);
+
+        webSocket.onmessage = (event) => {
+            const message_curr: Message = JSON.parse(event.data);
+
             if (message_curr.reporter === 'output_message') {
                 setMessages((messages_prev) => {
-                    // If messages_prev is empty, simply add the new message.
-                    if (messages_prev.length === 0) {
-                        return [message_curr];
+                    if (messages_prev.length === 0) return [message_curr];
+                    const last = messages_prev[messages_prev.length - 1];
+
+                    // If last message is question or 'full', append new
+                    if (last.type === 'question' || last.type === 'full') {
+                        return [...messages_prev, message_curr];
                     }
 
-                    // Get the last message from the previous state.
-                    const message_last = messages_prev[messages_prev.length - 1];
-
-                    if (message_last.type === "question" || message_last.type === "full") {
-                        return [...messages_prev.slice(), message_curr];
-                    }
-
-                    // If the last message is 'full', append the new message.
-                    if (message_curr.type === "full") {
+                    // If incoming message is 'full', replace last message
+                    if (message_curr.type === 'full') {
                         return [...messages_prev.slice(0, -1), message_curr];
                     }
 
-                    // If the last message is not 'full', concatenate it with the new message.
+                    // Otherwise, merge partial message
                     return [
-                        ...messages_prev.slice(0, -1), // all messages except the last
+                        ...messages_prev.slice(0, -1),
                         {
-                            ...message_last,
-                            message: message_last.message + message_curr.message,
+                            ...last,
+                            message: last.message + message_curr.message,
                         },
                     ];
                 });
@@ -49,148 +67,194 @@ const ChatApp: React.FC = () => {
         };
 
         setWs(webSocket);
-
-        // Clean up on unmount
-        return () => webSocket.close();
+        return () => {
+            webSocket.close();
+        };
     }, []);
 
+    // Send message
     const sendMessage = (): void => {
-        if (ws) {
+        if (ws && input.trim()) {
             ws.send(input);
-
-            setMessages(((messages_prev) => [...messages_prev, {
-                type: 'question',
-                reporter: 'user',
-                message: input,
-                links: []
-            }]));
-
-            setInput(''); // Clear the input after sending
+            setMessages((prev) => [
+                ...prev,
+                {
+                    type: 'question',
+                    reporter: 'user',
+                    message: input,
+                    links: [],
+                },
+            ]);
+            setInput('');
         }
     };
 
     return (
-        <div style={{ width: "40%", height: "100vh", margin: "0 auto", display: "flex", flexDirection: "column" }}>
-            <AppBar position="static" sx={{
-                // backgroundColor: "#",
-                backgroundImage: 'linear-gradient(45deg, #2f3f48, #586770)',
-                // 
-                borderBottomLeftRadius: 2,
-                borderBottomRightRadius: 2
-            }}>
-                <Toolbar>
-
-                    <Typography variant="h5" color="inherit" noWrap>
-                        Minima
-                    </Typography>
-                </Toolbar>
-            </AppBar>
-            <List
-                sx={{
-                    flexGrow: 1,
-                    marginTop: 2,
-                    height: 128,
-                    border: "1px solid gray",
-                    borderRadius: 2, // Optional: if you want rounded corners
-                    padding: 0, // Optional: to make sure the border aligns tightly if you have padding
-                    marginBottom: 2, // Keeps the bottom spacing
-                    overflowY: 'auto', // Ensures that the list can scroll on overflow
+        <ConfigProvider
+            theme={{
+                algorithm: isDarkMode ? darkAlgorithm : defaultAlgorithm,
+                token: {
+                    borderRadius: 2,
+                },
+            }}
+        >
+            <Layout
+                style={{
+                    width: '40%',
+                    height: '100vh',
+                    margin: '0 auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
                 }}
             >
-                {messages.map((msg, index) => {
-                    let isUser = msg.reporter === "user";
-
-                    return (
-                        <ListItem key={index} sx={{
-                            display: 'flex', // Enable flex properties
-                            flexDirection: 'column', // Stack children vertically
-
-                            ...(isUser ? {
-                                alignItems: 'flex-end', // Align to the right for odd items (assuming they represent the other person)
-                            } : {
-                                alignItems: 'flex-start', // Align items to the start (left side for LTR languages)
-                            })
-                        }}>
-                            <ListItemText primary={msg.message}
-                                          secondary={
-                                              <>
-                                                  {msg.links?.map((link, linkIndex) => (
-                                                      <React.Fragment key={linkIndex}>
-                                                          { <br />} {/* Adds an empty line before each link */}
-                                                          <Link href={link} target="_blank" rel="noopener noreferrer" color="inherit" underline="hover">
-                                                              {link}
-                                                          </Link>
-                                                          {linkIndex < msg.links.length - 1 && '\n '}
-                                                      </React.Fragment>
-                                                  ))}
-                                              </>
-                                          }
-                                          sx={{
-                                maxWidth: '60%', // Messages can take up to 60% of the List width
-                                bgcolor: 'background.paper', // Use the theme's paper color for the bubble background
-                                borderRadius: '16px', // Rounded corners for the bubble effect
-                                padding: '8px 16px', // Padding inside the bubble
-                                wordBreak: 'break-word', // Ensures text wraps and doesn't overflow
-                                ...(isUser ? {
-                                    textAlign: "right",
-                                    color: "white",
-                                    backgroundImage: 'linear-gradient(120deg, #1a62aa, #007bff)',
-                                } : {
-                                    color: "black",
-                                    backgroundImage: 'linear-gradient(120deg, #abcbe8, #7bade0)',
-                                })
-                            }}/>
-                            {/* <Box >
-                        </Box> */}
-                        </ListItem>
-                    )
-                })}
-            </List>
-            <Box
-                display="flex"
-                alignItems="center"
-                justifyContent="space-between"
-            >
-
-                <TextField
-                    label="Type your message here"
-                    variant="outlined"
-                    multiline={true}
-                    rows={5}
-                    fullWidth
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                            sendMessage();
-                        }
+                {/* Header with Theme Toggle */}
+                <Header
+                    style={{
+                        backgroundImage: isDarkMode
+                            ? 'linear-gradient(45deg, #10161A, #394B59)' // Dark gradient
+                            : 'linear-gradient(45deg, #2f3f48, #586770)', // Light gradient
+                        borderBottomLeftRadius: 2,
+                        borderBottomRightRadius: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '0 16px',
                     }}
+                >
+                    <Title level={4} style={{ margin: 0, color: 'white' }}>
+                        Minima
+                    </Title>
+                    <Switch
+                        checked={isDarkMode}
+                        onChange={toggleTheme}
+                        checkedChildren="Dark"
+                        unCheckedChildren="Light"
+                    />
+                </Header>
 
-                    InputLabelProps={{
-                        style: { color: '#fff' }, // Set the color of the label text to white
-                    }}
-                    InputProps={{
-                        style: { color: '#fff' }, // Set the color of the input text to white
-                    }}
+                {/* Messages */}
+                <Content style={{ padding: '16px', display: 'flex', flexDirection: 'column' }}>
+                    <AntList
+                        style={{
+                            flexGrow: 1,
+                            marginBottom: 16,
+                            border: '1px solid #ccc',
+                            borderRadius: 4,
+                            overflowY: 'auto',
+                            padding: '16px',
+                        }}
+                    >
+                        {messages.map((msg, index) => {
+                            const isUser = msg.reporter === 'user';
+                            return (
+                                <AntList.Item
+                                    key={index}
+                                    style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: isUser ? 'flex-end' : 'flex-start',
+                                        border: 'none',
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            maxWidth: '60%',
+                                            borderRadius: 16,
+                                            padding: '8px 16px',
+                                            wordBreak: 'break-word',
+                                            textAlign: isUser ? 'right' : 'left',
+                                            backgroundImage: isUser
+                                                ? 'linear-gradient(120deg, #1a62aa, #007bff)'
+                                                : 'linear-gradient(120deg, #abcbe8, #7bade0)',
+                                            color: isUser ? 'white' : 'black',
+                                        }}
+                                    >
+                                        <Paragraph
+                                            style={{
+                                                margin: 0,
+                                                color: 'inherit',
+                                                fontSize: '1rem',
+                                                fontWeight: 500,
+                                                lineHeight: '1.4',
+                                            }}
+                                        >
+                                            {msg.message}
+                                        </Paragraph>
 
-                    // If using the outlined variant, you can use this to style the notched outline
-                    sx={{
-                        marginBottom: 2,
-                        '& .MuiOutlinedInput-root': {
-                            '& fieldset': {
-                                borderColor: 'lightgray', // Set the border color to white
-                            },
-                            '&:hover fieldset': {
-                                borderColor: 'lightgray', // Set the border color to white on hover (optional)
-                            },
-                            '&.Mui-focused fieldset': {
-                                borderColor: 'lightgray', // Set the border color to white when focused
-                            },
-                        },
-                    }}
-                />
-            </Box>
-        </div >
+                                        {/* Links, if any */}
+                                        {msg.links?.length > 0 && (
+                                            <div style={{ marginTop: 4 }}>
+                                                {msg.links.map((link, linkIndex) => (
+                                                    <React.Fragment key={linkIndex}>
+                                                        <br />
+                                                        <AntLink
+                                                            href={link}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            style={{
+                                                                color: 'inherit',
+                                                                textDecoration: 'underline',
+                                                            }}
+                                                        >
+                                                            {link}
+                                                        </AntLink>
+                                                    </React.Fragment>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </AntList.Item>
+                            );
+                        })}
+                    </AntList>
+                </Content>
+
+                {/* Footer with TextArea & Circular Arrow Button */}
+                <Footer style={{ padding: '16px' }}>
+                    <div style={{ position: 'relative', width: '100%' }}>
+                        <TextArea
+                            placeholder="Type your message here..."
+                            rows={5}
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onPressEnter={(e) => {
+                                // Allow SHIFT+ENTER for multiline
+                                if (!e.shiftKey) {
+                                    e.preventDefault();
+                                    sendMessage();
+                                }
+                            }}
+                            style={{
+                                width: '100%',
+                                border: '1px solid #ccc',
+                                borderRadius: 4,
+                                resize: 'none',
+                                paddingRight: 60, // Extra space so text won't overlap the button
+                            }}
+                        />
+                        <Button
+                            shape="circle"
+                            icon={<ArrowRightOutlined />}
+                            onClick={sendMessage}
+                            style={{
+                                position: 'absolute',
+                                bottom: 8,
+                                right: 8,
+                                width: 40,
+                                height: 40,
+                                minWidth: 40,
+                                borderRadius: '50%',
+                                fontWeight: 'bold',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        />
+                    </div>
+                </Footer>
+            </Layout>
+        </ConfigProvider>
     );
 };
 
