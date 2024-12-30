@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { TextField, List, ListItem, ListItemText, Box, AppBar, Toolbar, Typography } from '@mui/material';
+import {TextField, List, ListItem, ListItemText, Box, AppBar, Toolbar, Typography, Link} from '@mui/material';
 
 interface Message {
     type: 'answer' | 'question' | 'full',
     reporter: 'output_message' | 'user',
-    message: string
+    message: string,
+    links: string[]
 }
 
 const ChatApp: React.FC = () => {
@@ -60,7 +61,8 @@ const ChatApp: React.FC = () => {
             setMessages(((messages_prev) => [...messages_prev, {
                 type: 'question',
                 reporter: 'user',
-                message: input
+                message: input,
+                links: []
             }]));
 
             setInput(''); // Clear the input after sending
@@ -109,7 +111,21 @@ const ChatApp: React.FC = () => {
                                 alignItems: 'flex-start', // Align items to the start (left side for LTR languages)
                             })
                         }}>
-                            <ListItemText primary={msg.message} sx={{
+                            <ListItemText primary={msg.message}
+                                          secondary={
+                                              <>
+                                                  {msg.links?.map((link, linkIndex) => (
+                                                      <React.Fragment key={linkIndex}>
+                                                          { <br />} {/* Adds an empty line before each link */}
+                                                          <Link href={link} target="_blank" rel="noopener noreferrer" color="inherit" underline="hover">
+                                                              {link}
+                                                          </Link>
+                                                          {linkIndex < msg.links.length - 1 && '\n '}
+                                                      </React.Fragment>
+                                                  ))}
+                                              </>
+                                          }
+                                          sx={{
                                 maxWidth: '60%', // Messages can take up to 60% of the List width
                                 bgcolor: 'background.paper', // Use the theme's paper color for the bubble background
                                 borderRadius: '16px', // Rounded corners for the bubble effect
@@ -123,7 +139,7 @@ const ChatApp: React.FC = () => {
                                     color: "black",
                                     backgroundImage: 'linear-gradient(120deg, #abcbe8, #7bade0)',
                                 })
-                            }} />
+                            }}/>
                             {/* <Box >
                         </Box> */}
                         </ListItem>
