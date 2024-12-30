@@ -36,6 +36,7 @@ services:
       - EMBEDDING_MODEL_ID=${EMBEDDING_MODEL_ID}
       - EMBEDDING_SIZE=${EMBEDDING_SIZE}
       - START_INDEXING=${START_INDEXING}
+      - CONTAINER_PATH=/usr/src/app/local_files/
     depends_on:
       - qdrant
 

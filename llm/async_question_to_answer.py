@@ -44,11 +44,12 @@ async def loop(
             )
             
         elif data:
-            answer = llm_chain.invoke(data)
+            result = llm_chain.invoke(data)
             response_queue.enqueue(
                 json.dumps({
                     "reporter": "output_message",
                     "type": "answer",
-                    "message": answer
+                    "message": result["answer"],
+                    "links": list(result["links"])
                 })
             )

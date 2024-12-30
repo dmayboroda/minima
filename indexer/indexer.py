@@ -11,7 +11,7 @@ from langchain_qdrant import QdrantVectorStore
 from langchain_huggingface import HuggingFaceEmbeddings
 from qdrant_client.http.models import Distance, VectorParams
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
+
 from langchain_community.document_loaders import (
     TextLoader,
     CSVLoader,
@@ -43,7 +43,7 @@ class Config:
     
     START_INDEXING = os.environ.get("START_INDEXING")
     LOCAL_FILES_PATH = os.environ.get("LOCAL_FILES_PATH")
-    CONTAINER_PATH = "/usr/src/app/local_files/"
+    CONTAINER_PATH = os.environ.get("CONTAINER_PATH")
     QDRANT_COLLECTION = "mnm_storage"
     QDRANT_BOOTSTRAP = "qdrant"
     EMBEDDING_MODEL_ID = os.environ.get("EMBEDDING_MODEL_ID")

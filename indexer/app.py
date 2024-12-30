@@ -28,8 +28,8 @@ async def query(request: Query):
     logger.info(f"Received query: {query}")
     try:
         result = indexer.find(request.query)
-        logger.info(f"Found {len(result)} results for query: {query}")
-        logger.info(f"Results: {result}")
+        logger.info(f"Found {len(result)} results for query: {query} res: {result}")
+        logger.info(f"FFFFFFFResults: {result}")
         return {"result": result}
     except Exception as e:
         logger.error(f"Error in processing query: {e}")

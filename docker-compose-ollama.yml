@@ -54,6 +54,7 @@ services:
       - EMBEDDING_MODEL_ID=${EMBEDDING_MODEL_ID}
       - EMBEDDING_SIZE=${EMBEDDING_SIZE}
       - START_INDEXING=${START_INDEXING}
+      - CONTAINER_PATH=/usr/src/app/local_files/
     depends_on:
       - qdrant
 
@@ -72,6 +73,8 @@ services:
       - PYTHONUNBUFFERED=TRUE
       - OLLAMA_MODEL=${OLLAMA_MODEL}
       - RERANKER_MODEL=${RERANKER_MODEL}
+      - LOCAL_FILES_PATH=${LOCAL_FILES_PATH}
+      - CONTAINER_PATH=/usr/src/app/local_files/
     depends_on:
       - ollama
       - qdrant

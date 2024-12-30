@@ -58,6 +58,13 @@ class LLMConfig:
         "cpu"
     )
 
+
+@dataclass
+class LocalConfig:
+    LOCAL_FILES_PATH = os.environ.get("LOCAL_FILES_PATH")
+    CONTAINER_PATH = os.environ.get("CONTAINER_PATH")
+
+
 class State(TypedDict):
     """State definition for the LLM Chain"""
     input: str
@@ -65,11 +72,13 @@ class State(TypedDict):
     context: str
     answer: str
 
+
 class LLMChain:
     """A chain for processing LLM queries with context awareness and retrieval capabilities"""
 
     def __init__(self, config: Optional[LLMConfig] = None):
         """Initialize the LLM Chain with optional custom configuration"""
+        self.localConfig = LocalConfig()
         self.config = config or LLMConfig()
         self.llm = self._setup_llm()
         self.document_store = self._setup_document_store()
@@ -171,7 +180,16 @@ class LLMChain:
                 config=config
             )
             logger.info(f"OUTPUT: {result}")
-            return result["answer"]
+            links = set()
+            from langchain.schema import Document
+            for ctx in result["context"]:
+                doc: Document = ctx
+                path = doc.metadata["file_path"].replace(
+                    self.localConfig.CONTAINER_PATH,
+                    self.localConfig.LOCAL_FILES_PATH
+                )
+                links.add(f"file://{path}")
+            return {"answer": result["answer"], "links": links}
         except Exception as e:
             logger.error(f"Error processing query", exc_info=True)
             return {"error": str(e), "status": "error"}
