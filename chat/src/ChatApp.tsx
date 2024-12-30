@@ -16,7 +16,6 @@ const ChatApp: React.FC = () => {
     useEffect(() => {
         const webSocket = new WebSocket('ws://localhost:8003/llm/');
         webSocket.onmessage = (message) => {
-            console.log("MESSAGE_FULL: ", message);
             const message_curr: Message = JSON.parse(message.data);
             if (message_curr.reporter === 'output_message') {
                 setMessages((messages_prev) => {
