@@ -22,6 +22,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_community.cross_encoders.huggingface import HuggingFaceCrossEncoder
 from langchain.chains.history_aware_retriever import create_history_aware_retriever
+from langchain.schema import Document
 
 logger = logging.getLogger(__name__)
 
@@ -181,7 +182,6 @@ class LLMChain:
             )
             logger.info(f"OUTPUT: {result}")
             links = set()
-            from langchain.schema import Document
             for ctx in result["context"]:
                 doc: Document = ctx
                 path = doc.metadata["file_path"].replace(
