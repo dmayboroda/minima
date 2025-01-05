@@ -1,12 +1,22 @@
 **Minima** is an open source RAG on-premises containers, with ability to integrate with ChatGPT and MCP. 
 Minima can also be used as a fully local RAG.
 
+[![smithery badge](https://smithery.ai/badge/minima)](https://smithery.ai/protocol/minima)
+
 Minima currently supports three modes:
 1. Isolated installation – Operate fully on-premises with containers, free from external dependencies such as ChatGPT or Claude. All neural networks (LLM, reranker, embedding) run on your cloud or PC, ensuring your data remains secure.
 
 2. Custom GPT – Query your local documents using ChatGPT app or web with custom GPTs. The indexer running on your cloud or local PC, while the primary LLM remains ChatGPT.
 
 3. Anthropic Claude – Use Anthropic Claude app to query your local documents. The indexer operates on your local PC, while Anthropic Claude serves as the primary LLM.
+
+### Installing via Smithery
+
+To install Minima for Claude Desktop automatically via [Smithery](https://smithery.ai/protocol/minima):
+
+```bash
+npx -y @smithery/cli install minima --client claude
+```
 
 **For MCP usage, please be sure that your local machines python is >=3.10 and 'uv' installed.**
 
