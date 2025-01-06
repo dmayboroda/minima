@@ -3,13 +3,13 @@ import uuid
 import torch
 import logging
 from dataclasses import dataclass
-from typing import List, Set, Dict, Optional
+from typing import List, Dict
 from pathlib import Path
 
 from qdrant_client import QdrantClient
 from langchain_qdrant import QdrantVectorStore
 from langchain_huggingface import HuggingFaceEmbeddings
-from qdrant_client.http.models import Distance, VectorParams
+from qdrant_client.http.models import Distance, VectorParams, Filter, FieldCondition, MatchValue
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from langchain_community.document_loaders import (
@@ -20,6 +20,7 @@ from langchain_community.document_loaders import (
     PyMuPDFLoader,
 )
 
+from storage import MinimaStore, IndexingStatus
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,11 @@ class Indexer:
                     distance=Distance.COSINE
                 ),
             )
+        self.qdrant.create_payload_index(
+            collection_name=self.config.QDRANT_COLLECTION,
+            field_name="fpath",
+            field_schema="keyword"
+        )
         return QdrantVectorStore(
             client=self.qdrant,
             collection_name=self.config.QDRANT_COLLECTION,
@@ -120,17 +126,50 @@ class Indexer:
             logger.error(f"Error processing file {loader.file_path}: {str(e)}")
             return []
 
-    def index(self, message: Dict[str, str]) -> None:
-        path, file_id = message["path"], message["file_id"]
+    def index(self, message: Dict[str, any]) -> None:
+        path, file_id, last_updated_seconds = message["path"], message["file_id"], message["last_updated_seconds"]
         logger.info(f"Processing file: {path} (ID: {file_id})")
-        
-        try:
-            loader = self._create_loader(path)
-            ids = self._process_file(loader)
-            if ids:
-                logger.info(f"Successfully indexed {path} with IDs: {ids}")
-        except Exception as e:
-            logger.error(f"Failed to index file {path}: {str(e)}")
+        indexing_status: IndexingStatus = MinimaStore.check_needs_indexing(fpath=path, last_updated_seconds=last_updated_seconds)
+        if indexing_status != IndexingStatus.no_need_reindexing:
+            logger.info(f"Indexing needed for {path} with status: {indexing_status}")
+            try:
+                if IndexingStatus.need_reindexing:
+                    logger.info(f"Removing {path} from index storage for reindexing")
+                    self.remove_from_storage(files_to_remove=[path])
+                loader = self._create_loader(path)
+                ids = self._process_file(loader)
+                if ids:
+                    logger.info(f"Successfully indexed {path} with IDs: {ids}")
+            except Exception as e:
+                logger.error(f"Failed to index file {path}: {str(e)}")
+        else:
+            logger.info(f"Skipping {path}, no indexing required. timestamp didn't change")
+
+    def purge(self, message: Dict[str, any]) -> None:
+        existing_file_paths: list[str] = message["existing_file_paths"]
+        files_to_remove = MinimaStore.find_removed_files(existing_file_paths=set(existing_file_paths))
+        if len(files_to_remove) > 0:
+            logger.info(f"purge processing removing old files {files_to_remove}")
+            self.remove_from_storage(files_to_remove)
+        else:
+            logger.info("Nothing to purge")
+
+    def remove_from_storage(self, files_to_remove: list[str]):
+        filter_conditions = Filter(
+            must=[
+                FieldCondition(
+                    key="fpath",
+                    match=MatchValue(value=fpath)
+                )
+                for fpath in files_to_remove
+            ]
+        )
+        response = self.qdrant.delete(
+            collection_name=self.config.QDRANT_COLLECTION,
+            points_selector=filter_conditions,
+            wait=True
+        )
+        logger.info(f"Delete response for {len(files_to_remove)} for files: {files_to_remove} is: {response}")
 
     def find(self, query: str) -> Dict[str, any]:
         try:
