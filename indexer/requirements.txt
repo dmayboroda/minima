@@ -17,3 +17,5 @@ openpyxl
 docx2txt
 pymupdf
 pydantic
+fastapi-utilities
+sqlmodel
