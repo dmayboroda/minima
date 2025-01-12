@@ -3,6 +3,7 @@ from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from singleton import Singleton
 from enum import Enum
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +23,8 @@ class MinimaDocUpdate(SQLModel):
     fpath: str | None = None
     last_updated_seconds: int | None = None
 
-
-sqlite_file_name = "database.db"
+sqlite_file_name_default = os.environ.get("LOCAL_FILES_PATH").replace("/", "_").replace(":", "_").replace(".", "_").replace(" ", "_")
+sqlite_file_name =os.environ.get("SQLITE_DATABSE", sqlite_file_name_default+".db")
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 
 connect_args = {"check_same_thread": False}

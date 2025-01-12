@@ -47,7 +47,8 @@ class Config:
     START_INDEXING = os.environ.get("START_INDEXING")
     LOCAL_FILES_PATH = os.environ.get("LOCAL_FILES_PATH")
     CONTAINER_PATH = os.environ.get("CONTAINER_PATH")
-    QDRANT_COLLECTION = "mnm_storage"
+    quadrant_collection_name = LOCAL_FILES_PATH.replace("/", "_").replace(":", "_").replace(".", "_").replace(" ", "_")
+    QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", quadrant_collection_name)
     QDRANT_BOOTSTRAP = "qdrant"
     EMBEDDING_MODEL_ID = os.environ.get("EMBEDDING_MODEL_ID")
     EMBEDDING_SIZE = os.environ.get("EMBEDDING_SIZE")
