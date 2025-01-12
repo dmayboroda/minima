@@ -10,16 +10,6 @@ Minima currently supports three modes:
 
 3. Anthropic Claude – Use Anthropic Claude app to query your local documents. The indexer operates on your local PC, while Anthropic Claude serves as the primary LLM.
 
-### Installing via Smithery (MCP usage)
-
-To install Minima for Claude Desktop automatically via [Smithery](https://smithery.ai/protocol/minima):
-
-```bash
-npx -y @smithery/cli install minima --client claude
-```
-
-**For MCP usage, please be sure that your local machines python is >=3.10 and 'uv' installed.**
-
 ### Running as containers
 
 1. Create a .env file in the project’s root directory (where you’ll find env.sample). Place .env in the same folder and copy all environment variables from env.sample to .env.
@@ -117,5 +107,15 @@ PASSWORD=password # you can create here password that you want
 ```
 
 Also, you can run minima using **run.sh**.
+
+### Installing via Smithery (MCP usage)
+
+To install Minima for Claude Desktop automatically via [Smithery](https://smithery.ai/protocol/minima):
+
+```bash
+npx -y @smithery/cli install minima --client claude
+```
+
+**For MCP usage, please be sure that your local machines python is >=3.10 and 'uv' installed.**
 
 Minima (https://github.com/dmayboroda/minima) is licensed under the Mozilla Public License v2.0 (MPLv2).
