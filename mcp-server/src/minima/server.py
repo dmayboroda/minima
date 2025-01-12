@@ -42,7 +42,7 @@ async def list_tools() -> list[Tool]:
     return [
         Tool(
             name="query",
-            description="Find a context in local files (PDF, CSV, DOCX, MD, TXT)",
+            description="Find a context in local files (PDF, CSV, DOCX, HTML, MD, TXT)",
             inputSchema=Query.model_json_schema(),
         )
     ]

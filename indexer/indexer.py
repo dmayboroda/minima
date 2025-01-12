@@ -32,6 +32,8 @@ class Config:
         ".xls": UnstructuredExcelLoader,
         ".docx": Docx2txtLoader,
         ".txt": TextLoader,
+        ".html": TextLoader,
+        ".htm": TextLoader,
         ".md": TextLoader,
         ".csv": CSVLoader,
     }
