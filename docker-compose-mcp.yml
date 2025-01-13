@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     #container_name: qdrant
     ports:
-      - 6333:6333
+      - 6333
     volumes:
       - ./qdrant_data:/qdrant/storage
     environment:
@@ -45,8 +45,8 @@ services:
               capabilities: [gpu]
   filebrowser:
     image: filebrowser/filebrowser
-    ports:
-      - 8080:8080
+    # ports:
+    #   - 8080
     volumes:
       - files:/files
     restart: unless-stopped
