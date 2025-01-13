@@ -58,7 +58,6 @@ class Config:
     
     CHUNK_SIZE = 512
     CHUNK_OVERLAP = 50
-    TOP_K = 5
 
 class StorageDict(defaultdict):
     def __missing__(self, key):
@@ -225,7 +224,7 @@ class Indexer:
             return {"error": f"Unable to find anything for the given query in pool {pool}. The pool does not exist."}
         try:
             logger.info(f"Searching for: {query}")
-            found = self.document_stores[pool].search(query, search_type="similarity", k=self.config.TOP_K)
+            found = self.document_stores[pool].search(query, search_type="similarity")
             
             if not found:
                 logger.info("No results found")
