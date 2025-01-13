@@ -94,8 +94,6 @@ class MinimaStore(metaclass=Singleton):
                         session.commit()
                     else:
                         logger.info(f"file {fpath} doesn't need indexing, timestamp same")
-                        # HACK: remove again
-                        indexing_status = IndexingStatus.need_reindexing
                 else:
                     doc = MinimaDoc(fpath=fpath, last_updated_seconds=last_updated_seconds)
                     session.add(doc)
