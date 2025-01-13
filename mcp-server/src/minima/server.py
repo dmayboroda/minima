@@ -36,13 +36,20 @@ class Query(BaseModel):
         str, 
         Field(description="context to find")
     ]
+    pool: Annotated[
+        str, 
+        Field(description="The pool to search in")
+    ]
 
 @server.list_tools()
 async def list_tools() -> list[Tool]:
     return [
         Tool(
-            name="query",
-            description="Find a context in local files (PDF, CSV, DOCX, HTML, MD, TXT)",
+            name="rag_query",
+            description=(
+                "Use a RAG model to find a context in indexed documents (PDF, CSV, DOCX, HTML, MD, TXT)." 
+                "All documents are orqanized in pools. You must specify a pool to search in."
+            ),
             inputSchema=Query.model_json_schema(),
         )
     ]
@@ -52,7 +59,7 @@ async def list_prompts() -> list[Prompt]:
     logging.info("List of prompts")
     return [
         Prompt(
-            name="query",
+            name="rag_query",
             description="Find a context in a local files",
             arguments=[
                 PromptArgument(

@@ -24,7 +24,7 @@ class MinimaDocUpdate(SQLModel):
     last_updated_seconds: int | None = None
 
 sqlite_file_name_default = os.environ.get("LOCAL_FILES_PATH").replace("/", "_").replace(":", "_").replace(".", "_").replace(" ", "_")
-sqlite_file_name =os.environ.get("SQLITE_DATABSE", sqlite_file_name_default+".db")
+sqlite_file_name =os.environ.get("SQLITE_DATABASE", sqlite_file_name_default+".db")
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 
 connect_args = {"check_same_thread": False}
@@ -94,6 +94,8 @@ class MinimaStore(metaclass=Singleton):
                         session.commit()
                     else:
                         logger.info(f"file {fpath} doesn't need indexing, timestamp same")
+                        # HACK: remove again
+                        indexing_status = IndexingStatus.need_reindexing
                 else:
                     doc = MinimaDoc(fpath=fpath, last_updated_seconds=last_updated_seconds)
                     session.add(doc)
