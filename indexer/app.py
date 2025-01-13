@@ -47,6 +47,7 @@ async def query(request: Query):
     "/embedding", 
     response_description='Get embedding for a query',
 )
+
 async def embedding(request: Query):
     logger.info(f"Received embedding request: {request}")
     try:
@@ -110,3 +111,11 @@ async def trigger_re_indexer():
 @repeat_every(seconds=60*10)
 async def schedule_reindexing():
     await trigger_re_indexer()
+
+@router.get(
+    "/index", 
+    response_description='retrigger indexing',
+)
+async def webtriggered_reindexing():
+    await trigger_re_indexer()
+    return {"result": "reindexing"}  

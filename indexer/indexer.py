@@ -17,7 +17,9 @@ from langchain_community.document_loaders import (
     CSVLoader,
     Docx2txtLoader,
     UnstructuredExcelLoader,
+    UnstructuredMarkdownLoader,
     PyMuPDFLoader,
+    UnstructuredHTMLLoader
 )
 
 from storage import MinimaStore, IndexingStatus
@@ -32,9 +34,9 @@ class Config:
         ".xls": UnstructuredExcelLoader,
         ".docx": Docx2txtLoader,
         ".txt": TextLoader,
-        ".html": TextLoader,
-        ".htm": TextLoader,
-        ".md": TextLoader,
+        ".html": UnstructuredHTMLLoader,
+        ".htm": UnstructuredHTMLLoader,
+        ".md": UnstructuredMarkdownLoader,
         ".csv": CSVLoader,
     }
     
@@ -70,8 +72,8 @@ class Indexer:
     def _initialize_embeddings(self) -> HuggingFaceEmbeddings:
         return HuggingFaceEmbeddings(
             model_name=self.config.EMBEDDING_MODEL_ID,
-            model_kwargs={'device': self.config.DEVICE},
-            encode_kwargs={'normalize_embeddings': False}
+            model_kwargs={'device': self.config.DEVICE, 'trust_remote_code': True},
+            encode_kwargs={'normalize_embeddings': False}            
         )
 
     def _initialize_text_splitter(self) -> RecursiveCharacterTextSplitter:

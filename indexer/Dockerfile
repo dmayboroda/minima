@@ -4,15 +4,16 @@ WORKDIR /usr/src/app
 RUN pip install --upgrade pip
 
 ARG EMBEDDING_MODEL_ID
-ARG START_INDEXING
 
 RUN pip install huggingface_hub
 RUN huggingface-cli download $EMBEDDING_MODEL_ID --repo-type model
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install einops datasets
 COPY . .
 
+ARG START_INDEXING
 ENV START_INDEXING=${START_INDEXING}
 RUN echo "START_INDEXING is $START_INDEXING"
 

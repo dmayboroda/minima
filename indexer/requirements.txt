@@ -4,7 +4,7 @@ langfuse
 langchain_qdrant
 langchain_community==0.2.17
 langchain-huggingface
-sentence-transformers==2.6.0
+sentence-transformers==2.7.0
 transformers
 asyncio==3.4.3
 fastapi==0.111.0
