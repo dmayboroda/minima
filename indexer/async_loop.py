@@ -36,7 +36,7 @@ async def crawl_loop(async_queue):
             "type": "all_files"
         }
         async_queue.enqueue(aggregate_message)
-        async_queue.enqueue({"type": "stop"})
+    async_queue.enqueue({"type": "stop"})
 
 
 async def index_loop(async_queue, indexer: Indexer):

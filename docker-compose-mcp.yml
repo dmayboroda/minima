@@ -41,7 +41,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ["3"]
+              device_ids: ["1"]
               capabilities: [gpu]
   filebrowser:
     image: filebrowser/filebrowser
