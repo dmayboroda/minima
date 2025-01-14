@@ -1,19 +1,21 @@
 import httpx
 import logging
+from os import getenv
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-REQUEST_DATA_URL = "http://localhost:8001/query"
+REQUEST_DATA_URL = getenv("REQUEST_DATA_URL", "http://localhost:8001/query")
 REQUEST_HEADERS = {
     'Accept': 'application/json',
     'Content-Type': 'application/json'
 }
 
-async def request_data(query):
+async def request_data(query, pool):
     payload = {
-        "query": query
+        "query": query,
+        "pool": pool
     }
     async with httpx.AsyncClient() as client:
         try:
@@ -23,7 +25,7 @@ async def request_data(query):
                                          json=payload)
             response.raise_for_status()
             data = response.json()
-            logger.info(f"Received data: {data}")
+            logger.debug(f"Received data: {data}")
             return data
 
         except Exception as e:
