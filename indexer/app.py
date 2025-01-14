@@ -107,6 +107,6 @@ async def trigger_re_indexer():
             task.cancel()
 
 
-@repeat_every(seconds=60*10)
+@repeat_every(seconds=60*20)
 async def schedule_reindexing():
     await trigger_re_indexer()
