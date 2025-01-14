@@ -54,3 +54,4 @@ node_modules/
 
 node_modules/
 *.local
+*.db-journal

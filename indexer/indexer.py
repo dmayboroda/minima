@@ -19,8 +19,8 @@ from langchain_community.document_loaders import (
     Docx2txtLoader,
     UnstructuredExcelLoader,
     UnstructuredMarkdownLoader,
-    PyMuPDFLoader,
-    UnstructuredHTMLLoader
+
+    BSHTMLLoader,    PyMuPDFLoader,
 )
 
 from storage import MinimaStore, IndexingStatus
@@ -35,8 +35,8 @@ class Config:
         ".xls": UnstructuredExcelLoader,
         ".docx": Docx2txtLoader,
         ".txt": TextLoader,
-        ".html": UnstructuredHTMLLoader,
-        ".htm": UnstructuredHTMLLoader,
+        ".html": BSHTMLLoader,
+        ".htm": BSHTMLLoader,
         ".md": UnstructuredMarkdownLoader,
         ".csv": CSVLoader,
     }
@@ -58,6 +58,8 @@ class Config:
     
     CHUNK_SIZE = 512
     CHUNK_OVERLAP = 50
+    TOP_K = 20
+    SCORE_THRESHOLD = 0.5
 
 class StorageDict(defaultdict):
     def __missing__(self, key):
@@ -151,11 +153,10 @@ class Indexer:
                 doc.metadata['file_path'] = loader.file_path
 
             poolname = self._poolname_from_file_path(loader.file_path)
-            logger.info(f"processing {loader.file_path} for pool {poolname}") 
             uuids = [str(uuid.uuid4()) for _ in range(len(documents))]
             ids = self.document_stores[poolname].add_documents(documents=documents, ids=uuids)
             
-            logger.info(f"Successfully processed {len(ids)} documents from {loader.file_path}")
+            logger.info(f"Successfully processed {len(ids)} documents from {loader.file_path} for pool {poolname}")
             return ids
             
         except Exception as e:
@@ -180,7 +181,7 @@ class Indexer:
                 loader = self._create_loader(path)
                 ids = self._process_file(loader)
                 if ids:
-                    logger.info(f"Successfully indexed {path} with IDs: {ids}")
+                    logger.info(f"Successfully indexed {path} with {len(ids)} IDs.")
             except Exception as e:
                 logger.error(f"Failed to index file {path}: {str(e)}")
         else:
@@ -210,21 +211,25 @@ class Indexer:
                         for fpath in pool_files_to_remove
                     ]
                 )
-                logger.info(f" Filter for removing files from storage for pool {poolname}: {filter_conditions}")
+                logger.debug(f" Filter for removing files from storage for pool {poolname}: {filter_conditions}")
                 response = self.qdrant.delete(
                     collection_name=poolname,
                     points_selector=filter_conditions,
                     wait=True
                 )
-                logger.info(f"Delete response for {len(files_to_remove)} for files: {files_to_remove} is: {response}")
+                logger.info(f"Delete response for {len(files_to_remove)} files is: {response}")
 
     def find(self, pool: str, query: str) -> Dict[str, any]: 
         if pool not in self.document_stores:
-            logger.error(f"Unable to find anything for the given query in pool {pool}. The pool does not exist.")
-            return {"error": f"Unable to find anything for the given query in pool {pool}. The pool does not exist."}
+            if self.qdrant.collection_exists(pool):
+                _ = self.document_stores[pool]
+            else:
+                logger.error(f"Unable to find anything for the given query in pool {pool}. The pool does not exist.")
+                return {"error": f"Unable to find anything for the given query in pool {pool}. The pool does not exist."}
+
         try:
             logger.info(f"Searching for: {query}")
-            found = self.document_stores[pool].search(query, search_type="similarity")
+            found = self.document_stores[pool].search(query, search_type="similarity", k=self.config.TOP_K, score_threshold=self.config.SCORE_THRESHOLD)
             
             if not found:
                 logger.info("No results found")

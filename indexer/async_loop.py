@@ -31,11 +31,11 @@ async def crawl_loop(async_queue):
             existing_file_paths.append(path)
             async_queue.enqueue(message)
             logger.info(f"File enqueue: {path}")
-        aggregate_message = {
-            "existing_file_paths": existing_file_paths,
-            "type": "all_files"
-        }
-        async_queue.enqueue(aggregate_message)
+    aggregate_message = {
+        "existing_file_paths": existing_file_paths,
+        "type": "all_files"
+    }
+    async_queue.enqueue(aggregate_message)
     async_queue.enqueue({"type": "stop"})
 
 
