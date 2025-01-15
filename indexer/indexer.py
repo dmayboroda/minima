@@ -133,7 +133,7 @@ class Indexer:
         if indexing_status != IndexingStatus.no_need_reindexing:
             logger.info(f"Indexing needed for {path} with status: {indexing_status}")
             try:
-                if IndexingStatus.need_reindexing:
+                if indexing_status == IndexingStatus.need_reindexing:
                     logger.info(f"Removing {path} from index storage for reindexing")
                     self.remove_from_storage(files_to_remove=[path])
                 loader = self._create_loader(path)

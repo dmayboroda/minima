@@ -45,6 +45,7 @@ services:
     volumes:
       - ${LOCAL_FILES_PATH}:/usr/src/app/local_files/
       - ./indexer:/usr/src/app
+      - ./indexer_data:/indexer/storage
     ports:
       - 8001:8000
     environment:
