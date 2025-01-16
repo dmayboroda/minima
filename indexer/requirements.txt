@@ -2,7 +2,7 @@ langchain
 langchain-core
 langfuse
 langchain_qdrant
-langchain_community==0.2.17
+langchain_community
 langchain-huggingface
 sentence-transformers==2.6.0
 transformers
@@ -11,6 +11,7 @@ fastapi==0.111.0
 qdrant-client
 uvicorn[standard]
 unstructured[xlsx]
+unstructured[pptx]
 python-magic
 python-dotenv
 openpyxl
@@ -19,3 +20,6 @@ pymupdf
 pydantic
 fastapi-utilities
 sqlmodel
+nltk
+unstructured
+python-pptx

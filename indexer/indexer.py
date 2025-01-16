@@ -2,6 +2,7 @@ import os
 import uuid
 import torch
 import logging
+import time
 from dataclasses import dataclass
 from typing import List, Dict
 from pathlib import Path
@@ -18,6 +19,7 @@ from langchain_community.document_loaders import (
     Docx2txtLoader,
     UnstructuredExcelLoader,
     PyMuPDFLoader,
+    UnstructuredPowerPointLoader,
 )
 
 from storage import MinimaStore, IndexingStatus
@@ -29,8 +31,12 @@ logger = logging.getLogger(__name__)
 class Config:
     EXTENSIONS_TO_LOADERS = {
         ".pdf": PyMuPDFLoader,
+        ".pptx": UnstructuredPowerPointLoader,
+        ".ppt": UnstructuredPowerPointLoader,
         ".xls": UnstructuredExcelLoader,
+        ".xlsx": UnstructuredExcelLoader,
         ".docx": Docx2txtLoader,
+        ".doc": Docx2txtLoader,
         ".txt": TextLoader,
         ".md": TextLoader,
         ".csv": CSVLoader,
@@ -127,6 +133,7 @@ class Indexer:
             return []
 
     def index(self, message: Dict[str, any]) -> None:
+        start = time.time()
         path, file_id, last_updated_seconds = message["path"], message["file_id"], message["last_updated_seconds"]
         logger.info(f"Processing file: {path} (ID: {file_id})")
         indexing_status: IndexingStatus = MinimaStore.check_needs_indexing(fpath=path, last_updated_seconds=last_updated_seconds)
@@ -144,6 +151,8 @@ class Indexer:
                 logger.error(f"Failed to index file {path}: {str(e)}")
         else:
             logger.info(f"Skipping {path}, no indexing required. timestamp didn't change")
+        end = time.time()
+        logger.info(f"Processing took {end - start} seconds for file {path}")
 
     def purge(self, message: Dict[str, any]) -> None:
         existing_file_paths: list[str] = message["existing_file_paths"]
