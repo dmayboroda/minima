@@ -11,6 +11,8 @@ from fastapi import FastAPI, APIRouter
 from contextlib import asynccontextmanager
 from async_loop import index_loop, crawl_loop
 from storage import MinimaStore
+import nltk
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,6 +23,18 @@ indexer = Indexer()
 async_queue = AsyncQueue()
 router = APIRouter()
 MinimaStore.create_db_and_tables()
+
+
+def init_loader_dependencies():
+    nltk.download('punkt')
+    nltk.download('punkt_tab')
+    nltk.download('wordnet')
+    nltk.download('omw-1.4')
+    nltk.download('punkt')
+    nltk.download('averaged_perceptron_tagger_eng')
+
+
+init_loader_dependencies()
 
 
 class Query(BaseModel):
