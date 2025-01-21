@@ -10,6 +10,7 @@ import {
     Button,
 } from 'antd';
 import { ArrowRightOutlined } from '@ant-design/icons';
+import {ToastContainer, toast, Bounce} from 'react-toastify';
 
 const { Header, Content, Footer } = Layout;
 const { TextArea } = Input;
@@ -74,20 +75,39 @@ const ChatApp: React.FC = () => {
 
     // Send message
     const sendMessage = (): void => {
-        if (ws && input.trim()) {
-            ws.send(input);
-            setMessages((prev) => [
-                ...prev,
-                {
-                    type: 'question',
-                    reporter: 'user',
-                    message: input,
-                    links: [],
-                },
-            ]);
-            setInput('');
+        try {
+            if (ws && input.trim()) {
+                ws.send(input);
+                setMessages((prev) => [
+                    ...prev,
+                    {
+                        type: 'question',
+                        reporter: 'user',
+                        message: input,
+                        links: [],
+                    },
+                ]);
+                setInput('');
+            }
+        } catch (e) {
+            console.error(e);
         }
     };
+
+    async function handleLinkClick(link: string) {
+        await navigator.clipboard.writeText(link);
+        toast('Link copied!', {
+            position: "top-right",
+            autoClose: 1000,
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: false,
+            progress: undefined,
+            theme: "light",
+            transition: Bounce,
+        });
+    }
 
     return (
         <ConfigProvider
@@ -100,7 +120,7 @@ const ChatApp: React.FC = () => {
         >
             <Layout
                 style={{
-                    width: '40%',
+                    width: '100%',
                     height: '100vh',
                     margin: '0 auto',
                     display: 'flex',
@@ -189,6 +209,9 @@ const ChatApp: React.FC = () => {
                                                     <React.Fragment key={linkIndex}>
                                                         <br />
                                                         <AntLink
+                                                            onClick={async () => {
+                                                                await handleLinkClick(link)
+                                                            }}
                                                             href={link}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
