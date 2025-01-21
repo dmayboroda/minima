@@ -19,7 +19,6 @@ Minima currently supports three modes:
    <li> LOCAL_FILES_PATH </li>
    <li> EMBEDDING_MODEL_ID </li>
    <li> EMBEDDING_SIZE </li>
-   <li> START_INDEXING </li>
    <li> OLLAMA_MODEL </li>
    <li> RERANKER_MODEL </li>
    <li> USER_ID </li> - required for ChatGPT integration, just use your email
@@ -64,8 +63,6 @@ Explanation of Variables:
 
 **EMBEDDING_SIZE**: Define the embedding dimension provided by the model, which is needed to configure Qdrant vector storage. Ensure this value matches the actual embedding size of the specified EMBEDDING_MODEL_ID.
 
-**START_INDEXING**: Set this to ‘true’ on initial startup to begin indexing. Data can be queried while it indexes. Note that reindexing is not yet supported. To reindex, remove the qdrant_data folder (created automatically), set this flag to ‘true,’ and restart the containers. After indexing completes, you can keep the container running or restart without reindexing by setting this flag to ‘false’.
-
 **OLLAMA_MODEL**: Set up the Ollama model, use an ID available on the Ollama [site](https://ollama.com/search). Please, use LLM model here, not an embedding.
 
 **RERANKER_MODEL**: Specify the reranker model. Currently, we have tested with BAAI rerankers. You can explore all available rerankers using this [link](https://huggingface.co/collections/BAAI/).
@@ -80,7 +77,6 @@ Example of .env file for on-premises/local usage:
 LOCAL_FILES_PATH=/Users/davidmayboroda/Downloads/PDFs/
 EMBEDDING_MODEL_ID=sentence-transformers/all-mpnet-base-v2
 EMBEDDING_SIZE=768
-START_INDEXING=false # true on the first run for indexing
 OLLAMA_MODEL=qwen2:0.5b # must be LLM model id from Ollama models page
 RERANKER_MODEL=BAAI/bge-reranker-base # please, choose any BAAI reranker model
 ```
@@ -92,7 +88,6 @@ Example of .env file for Claude app:
 LOCAL_FILES_PATH=/Users/davidmayboroda/Downloads/PDFs/
 EMBEDDING_MODEL_ID=sentence-transformers/all-mpnet-base-v2
 EMBEDDING_SIZE=768
-START_INDEXING=false # true on the first run for indexing
 ```
 For the Claude app, please apply the changes to the claude_desktop_config.json file as outlined above.
 
@@ -101,7 +96,6 @@ Example of .env file for ChatGPT custom GPT usage:
 LOCAL_FILES_PATH=/Users/davidmayboroda/Downloads/PDFs/
 EMBEDDING_MODEL_ID=sentence-transformers/all-mpnet-base-v2
 EMBEDDING_SIZE=768
-START_INDEXING=false
 USER_ID=user@gmail.com # your real email
 PASSWORD=password # you can create here password that you want
 ```

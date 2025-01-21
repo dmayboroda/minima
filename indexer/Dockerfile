@@ -4,7 +4,6 @@ WORKDIR /usr/src/app
 RUN pip install --upgrade pip
 
 ARG EMBEDDING_MODEL_ID
-ARG START_INDEXING
 
 RUN pip install huggingface_hub
 RUN huggingface-cli download $EMBEDDING_MODEL_ID --repo-type model
@@ -12,9 +11,6 @@ RUN huggingface-cli download $EMBEDDING_MODEL_ID --repo-type model
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-
-ENV START_INDEXING=${START_INDEXING}
-RUN echo "START_INDEXING is $START_INDEXING"
 
 ENV PORT 8000
 ENV CURRENT_HOST 0.0.0.0
