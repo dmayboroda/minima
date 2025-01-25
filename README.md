@@ -1,3 +1,5 @@
+![MNMA Logo](assets/mnma-logo-w.svg)
+
 **Minima** is an open source RAG on-premises containers, with ability to integrate with ChatGPT and MCP. 
 Minima can also be used as a fully local RAG.
 
