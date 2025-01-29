@@ -91,7 +91,6 @@ Example of .env file for Claude app:
 ```
 LOCAL_FILES_PATH=/Users/davidmayboroda/Downloads/PDFs/
 EMBEDDING_MODEL_ID=sentence-transformers/all-mpnet-base-v2
-RERANKER_MODEL=BAAI/bge-reranker-base
 EMBEDDING_SIZE=768
 ```
 For the Claude app, please apply the changes to the claude_desktop_config.json file as outlined above.
