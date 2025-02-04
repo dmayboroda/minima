@@ -1,0 +1,3 @@
+[submodule "minima-ui"]
+    path = minima-ui
+    url = git@github.com:pshenok/minima-ui.git
