@@ -5,6 +5,7 @@ import datetime
 import logging
 from dataclasses import dataclass
 from typing import Sequence, Optional
+from langchain.schema import Document
 from qdrant_client import QdrantClient
 from langchain_ollama import ChatOllama
 from minima_embed import MinimaEmbeddings
@@ -14,6 +15,7 @@ from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 from typing_extensions import Annotated, TypedDict
 from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain.chains.retrieval import create_retrieval_chain
 from langchain.retrievers import ContextualCompressionRetriever
@@ -22,7 +24,6 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_community.cross_encoders.huggingface import HuggingFaceCrossEncoder
 from langchain.chains.history_aware_retriever import create_history_aware_retriever
-from langchain.schema import Document
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,21 @@ SYSTEM_PROMPT = (
     "\n\n"
     "{context}"
 )
+
+QUERY_ENHANCEMENT_PROMPT = (
+    "You are an expert at converting user questions into queries."
+    "You have access to a users files."
+    "Perform query expansion."
+    "Just return one expanded query, do not add any other text."
+    "If there are acronyms or words you are not familiar with, do not try to rephrase them."
+    "Do not change the original meaning of the question and do not add any additional information."
+)
+
+class ParaphrasedQuery(BaseModel):
+    paraphrased_query: str = Field(
+        ...,
+        description="A unique paraphrasing of the original question.",
+    )
 
 @dataclass
 class LLMConfig:
@@ -72,6 +88,7 @@ class State(TypedDict):
     chat_history: Annotated[Sequence[BaseMessage], add_messages]
     context: str
     answer: str
+    init_query: str
 
 
 class LLMChain:
@@ -134,24 +151,43 @@ class LLMChain:
             ("human", "{input}"),
         ])
         qa_chain = create_stuff_documents_chain(self.llm, qa_prompt)
-        
-        return create_retrieval_chain(history_aware_retriever, qa_chain)
+        retrieval_chain = create_retrieval_chain(history_aware_retriever, qa_chain)
+
+        return retrieval_chain
 
     def _create_graph(self) -> StateGraph:
         """Create the processing graph"""
         workflow = StateGraph(state_schema=State)
-        workflow.add_edge(START, "model")
-        workflow.add_node("model", self._call_model)
+        workflow.add_node("enhance", self._enhance_query)
+        workflow.add_node("retrieval", self._call_model)
+        workflow.add_edge(START, "enhance")
+        workflow.add_edge("enhance", "retrieval")
         return workflow.compile(checkpointer=MemorySaver())
+
+    def _enhance_query(self, state: State) -> str:
+        """Enhance the query using the LLM"""
+        prompt_enhancement = ChatPromptTemplate.from_messages([
+            ("system", QUERY_ENHANCEMENT_PROMPT),
+            ("human", "{input}"),
+        ])
+        query_enhancement = prompt_enhancement | self.llm
+        enhanced_query = query_enhancement.invoke({
+            "input": state["input"]
+        })
+        logger.info(f"Enhanced query: {enhanced_query}")
+        state["init_query"] = state["input"]
+        state["input"] = enhanced_query.content
+        return state
 
     def _call_model(self, state: State) -> dict:
         """Process the query through the model"""
-        logger.info(f"Processing query: {state['input']}")
+        logger.info(f"Processing query: {state['init_query']}")
+        logger.info(f"Enhanced query: {state['input']}")
         response = self.chain.invoke(state)
         logger.info(f"Received response: {response['answer']}")
         return {
             "chat_history": [
-                HumanMessage(state["input"]),
+                HumanMessage(state["init_query"]),
                 AIMessage(response["answer"]),
             ],
             "context": response["context"],
