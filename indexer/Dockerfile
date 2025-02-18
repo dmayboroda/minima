@@ -13,10 +13,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install einops datasets
 COPY . .
 
-ARG START_INDEXING
-ENV START_INDEXING=${START_INDEXING}
-RUN echo "START_INDEXING is $START_INDEXING"
-
 ENV PORT 8000
 ENV CURRENT_HOST 0.0.0.0
 ENV WORKERS 1

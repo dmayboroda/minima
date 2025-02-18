@@ -9,8 +9,7 @@ logger = logging.getLogger(__name__)
 executor = ThreadPoolExecutor()
 
 CONTAINER_PATH = os.environ.get("CONTAINER_PATH")
-AVAILABLE_EXTENSIONS = [ ".pdf", ".xls", ".docx", ".txt", ".md", ".csv", ".html", ".htm" ]
-
+AVAILABLE_EXTENSIONS = [".pdf", ".xls", "xlsx", ".doc", ".docx", ".txt", ".md", ".csv", ".ppt", ".pptx", ".html", ".htm"]
 
 async def crawl_loop(async_queue):
     logger.info(f"Starting crawl loop with path: {CONTAINER_PATH}")
@@ -59,4 +58,5 @@ async def index_loop(async_queue, indexer: Indexer):
         except Exception as e:
             logger.error(f"Error in processing message: {e}")
             logger.error(f"Failed to process message: {message}")
+        await asyncio.sleep(1)
 

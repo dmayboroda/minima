@@ -2,6 +2,7 @@ import os
 import uuid
 import torch
 import logging
+import time
 from dataclasses import dataclass
 from typing import List, Dict
 from pathlib import Path
@@ -19,8 +20,9 @@ from langchain_community.document_loaders import (
     Docx2txtLoader,
     UnstructuredExcelLoader,
     UnstructuredMarkdownLoader,
-
-    BSHTMLLoader,    PyMuPDFLoader,
+    BSHTMLLoader,
+    PyMuPDFLoader,
+    UnstructuredPowerPointLoader,
 )
 
 from storage import MinimaStore, IndexingStatus
@@ -32,8 +34,12 @@ logger = logging.getLogger(__name__)
 class Config:
     EXTENSIONS_TO_LOADERS = {
         ".pdf": PyMuPDFLoader,
+        ".pptx": UnstructuredPowerPointLoader,
+        ".ppt": UnstructuredPowerPointLoader,
         ".xls": UnstructuredExcelLoader,
+        ".xlsx": UnstructuredExcelLoader,
         ".docx": Docx2txtLoader,
+        ".doc": Docx2txtLoader,
         ".txt": TextLoader,
         ".html": BSHTMLLoader,
         ".htm": BSHTMLLoader,
@@ -164,6 +170,7 @@ class Indexer:
             return []
 
     def index(self, message: Dict[str, any]) -> None:
+        start = time.time()
         path, file_id, last_updated_seconds = message["path"], message["file_id"], message["last_updated_seconds"]
         logger.info(f"Processing file: {path} (ID: {file_id})")
         poolname = self._poolname_from_file_path(path)
@@ -172,7 +179,7 @@ class Indexer:
         if indexing_status != IndexingStatus.no_need_reindexing:
             logger.info(f"Indexing needed for {path} with status: {indexing_status}")
             try:
-                if IndexingStatus.need_reindexing:
+                if indexing_status == IndexingStatus.need_reindexing:
                     logger.info(f"Removing {path} from index storage for reindexing")
                     try:
                         self.remove_from_storage(files_to_remove=[path])
@@ -186,6 +193,8 @@ class Indexer:
                 logger.error(f"Failed to index file {path}: {str(e)}")
         else:
             logger.info(f"Skipping {path}, no indexing required. timestamp didn't change")
+        end = time.time()
+        logger.info(f"Processing took {end - start} seconds for file {path}")
 
     def purge(self, message: Dict[str, any]) -> None:
         existing_file_paths: list[str] = message["existing_file_paths"]

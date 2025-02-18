@@ -62,11 +62,11 @@ class MinimaStore(metaclass=Singleton):
         with Session(engine) as session:
             statement = select(MinimaDoc)
             results = session.exec(statement)
-            logger.info(f"find_removed_files count found {results}")
+            logger.debug(f"find_removed_files count found {results}")
             for doc in results:
-                logger.info(f"find_removed_files file {doc.fpath} checking to remove")
+                logger.debug(f"find_removed_files file {doc.fpath} checking to remove")
                 if doc.fpath not in existing_file_paths:
-                    logger.info(f"find_removed_files file {doc.fpath} does not exist anymore, removing")
+                    logger.debug(f"find_removed_files file {doc.fpath} does not exist anymore, removing")
                     removed_files.append(doc.fpath)
         for fpath in removed_files:
             MinimaStore.delete_m_doc(fpath)
@@ -81,24 +81,24 @@ class MinimaStore(metaclass=Singleton):
                 results = session.exec(statement)
                 doc = results.first()
                 if doc is not None:
-                    logger.info(
+                    logger.debug(
                         f"file {fpath} new last updated={last_updated_seconds} old last updated: {doc.last_updated_seconds}"
                     )
                     if doc.last_updated_seconds < last_updated_seconds:
                         indexing_status = IndexingStatus.need_reindexing
-                        logger.info(f"file {fpath} needs indexing, timestamp changed")
+                        logger.debug(f"file {fpath} needs indexing, timestamp changed")
                         doc_update = MinimaDocUpdate(fpath=fpath, last_updated_seconds=last_updated_seconds)
                         doc_data = doc_update.model_dump(exclude_unset=True)
                         doc.sqlmodel_update(doc_data)
                         session.add(doc)
                         session.commit()
                     else:
-                        logger.info(f"file {fpath} doesn't need indexing, timestamp same")
+                        logger.debug(f"file {fpath} doesn't need indexing, timestamp same")
                 else:
                     doc = MinimaDoc(fpath=fpath, last_updated_seconds=last_updated_seconds)
                     session.add(doc)
                     session.commit()
-                    logger.info(f"file {fpath} needs indexing, new file")
+                    logger.debug(f"file {fpath} needs indexing, new file")
                     indexing_status = IndexingStatus.new_file
             return indexing_status
         except Exception as e:
