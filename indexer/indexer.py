@@ -1,17 +1,23 @@
 import os
 import uuid
-import torch
-import logging
 import time
-from dataclasses import dataclass
-from typing import List, Dict
+import logging
 from pathlib import Path
-
+from typing import List, Dict
+from dataclasses import dataclass
 from qdrant_client import QdrantClient
 from langchain_qdrant import QdrantVectorStore
-from langchain_huggingface import HuggingFaceEmbeddings
-from qdrant_client.http.models import Distance, VectorParams, Filter, FieldCondition, MatchValue
+from storage import MinimaStore, IndexingStatus
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+
+from qdrant_client.http.models import (
+    Distance, 
+    VectorParams, 
+    Filter, 
+    FieldCondition, 
+    MatchValue
+)
 
 from langchain_community.document_loaders import (
     TextLoader,
@@ -21,8 +27,6 @@ from langchain_community.document_loaders import (
     PyMuPDFLoader,
     UnstructuredPowerPointLoader,
 )
-
-from storage import MinimaStore, IndexingStatus
 
 logger = logging.getLogger(__name__)
 
@@ -42,11 +46,6 @@ class Config:
         ".csv": CSVLoader,
     }
     
-    DEVICE = torch.device(
-        "mps" if torch.backends.mps.is_available() else
-        "cuda" if torch.cuda.is_available() else
-        "cpu"
-    )
     
     START_INDEXING = os.environ.get("START_INDEXING")
     LOCAL_FILES_PATH = os.environ.get("LOCAL_FILES_PATH")
@@ -70,11 +69,9 @@ class Indexer:
     def _initialize_qdrant(self) -> QdrantClient:
         return QdrantClient(host=self.config.QDRANT_BOOTSTRAP)
 
-    def _initialize_embeddings(self) -> HuggingFaceEmbeddings:
-        return HuggingFaceEmbeddings(
+    def _initialize_embeddings(self) -> FastEmbedEmbeddings:
+        return FastEmbedEmbeddings(
             model_name=self.config.EMBEDDING_MODEL_ID,
-            model_kwargs={'device': self.config.DEVICE},
-            encode_kwargs={'normalize_embeddings': False}
         )
 
     def _initialize_text_splitter(self) -> RecursiveCharacterTextSplitter:
@@ -134,9 +131,17 @@ class Indexer:
 
     def index(self, message: Dict[str, any]) -> None:
         start = time.time()
-        path, file_id, last_updated_seconds = message["path"], message["file_id"], message["last_updated_seconds"]
+
+        path = message["path"]
+        file_id = message["file_id"]
+        last_updated_seconds = message["last_updated_seconds"]
         logger.info(f"Processing file: {path} (ID: {file_id})")
-        indexing_status: IndexingStatus = MinimaStore.check_needs_indexing(fpath=path, last_updated_seconds=last_updated_seconds)
+
+        indexing_status: IndexingStatus = MinimaStore.check_needs_indexing(
+            fpath=path, 
+            last_updated_seconds=last_updated_seconds
+        )
+
         if indexing_status != IndexingStatus.no_need_reindexing:
             logger.info(f"Indexing needed for {path} with status: {indexing_status}")
             try:
@@ -151,6 +156,7 @@ class Indexer:
                 logger.error(f"Failed to index file {path}: {str(e)}")
         else:
             logger.info(f"Skipping {path}, no indexing required. timestamp didn't change")
+
         end = time.time()
         logger.info(f"Processing took {end - start} seconds for file {path}")
 

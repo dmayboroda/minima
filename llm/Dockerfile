@@ -6,9 +6,9 @@ ARG RERANKER_MODEL
 
 RUN pip install --upgrade pip
 COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install huggingface_hub
 RUN huggingface-cli download $RERANKER_MODEL --repo-type model
-RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENV PORT 8000

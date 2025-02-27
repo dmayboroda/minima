@@ -1,14 +1,18 @@
 import os
 import uuid
-import torch
-import datetime
 import logging
+import datetime
+from ragas.metrics import Metric
 from dataclasses import dataclass
+from ragas import SingleTurnSample
 from typing import Sequence, Optional
 from langchain.schema import Document
 from qdrant_client import QdrantClient
 from langchain_ollama import ChatOllama
 from minima_embed import MinimaEmbeddings
+from minima_reranker import MinimaReranker
+from ragas.metrics import SingleTurnMetric
+from ragas.llms import LangchainLLMWrapper
 from langgraph.graph import START, StateGraph
 from langchain_qdrant import QdrantVectorStore
 from langchain_core.messages import BaseMessage
@@ -19,11 +23,11 @@ from langchain_core.pydantic_v1 import BaseModel, Field
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain.chains.retrieval import create_retrieval_chain
 from langchain.retrievers import ContextualCompressionRetriever
-from langchain.retrievers.document_compressors import CrossEncoderReranker
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_community.cross_encoders.huggingface import HuggingFaceCrossEncoder
+from ragas.metrics import LLMContextRecall, Faithfulness, FactualCorrectness
 from langchain.chains.history_aware_retriever import create_history_aware_retriever
+
 
 logger = logging.getLogger(__name__)
 
@@ -69,11 +73,6 @@ class LLMConfig:
     ollama_model: str = os.environ.get("OLLAMA_MODEL")
     rerank_model: str = os.environ.get("RERANKER_MODEL")
     temperature: float = 0.5
-    device: torch.device = torch.device(
-        "mps" if torch.backends.mps.is_available() else
-        "cuda" if torch.cuda.is_available() else
-        "cpu"
-    )
 
 
 @dataclass
@@ -102,6 +101,20 @@ class LLMChain:
         self.document_store = self._setup_document_store()
         self.chain = self._setup_chain()
         self.graph = self._create_graph()
+        self.llm_wrapper = self._create_eval_llm()
+        self.ragas_metrics = self._create_ragas_metrics()
+
+    def _create_ragas_metrics(self) -> list[Metric]:
+        """Create a list of RAGAS metrics"""
+        return [
+            LLMContextRecall(),
+            Faithfulness(),
+            FactualCorrectness(),
+        ]
+
+    def _create_eval_llm(self) -> LangchainLLMWrapper:
+        """Create an evaluation LLM wrapper"""
+        return LangchainLLMWrapper(self.llm)
 
     def _setup_llm(self) -> ChatOllama:
         """Initialize the LLM model"""
@@ -125,12 +138,9 @@ class LLMChain:
         """Set up the retrieval and QA chain"""
         # Initialize retriever with reranking
         base_retriever = self.document_store.as_retriever()
-        reranker = HuggingFaceCrossEncoder(
-            model_name=self.config.rerank_model,
-            model_kwargs={'device': self.config.device},
-        )
+    
         compression_retriever = ContextualCompressionRetriever(
-            base_compressor=CrossEncoderReranker(model=reranker, top_n=3),
+            base_compressor=MinimaReranker(model_name=self.config.rerank_model),
             base_retriever=base_retriever
         )
 
@@ -160,8 +170,10 @@ class LLMChain:
         workflow = StateGraph(state_schema=State)
         workflow.add_node("enhance", self._enhance_query)
         workflow.add_node("retrieval", self._call_model)
+        workflow.add_node("evaluate", self._evaluate_response)
         workflow.add_edge(START, "enhance")
         workflow.add_edge("enhance", "retrieval")
+        workflow.add_edge("retrieval", "evaluate")
         return workflow.compile(checkpointer=MemorySaver())
 
     def _enhance_query(self, state: State) -> str:
@@ -190,9 +202,23 @@ class LLMChain:
                 HumanMessage(state["init_query"]),
                 AIMessage(response["answer"]),
             ],
+            "query": state["input"],
             "context": response["context"],
             "answer": response["answer"],
         }
+    
+    def _evaluate_response(self, response: dict) -> dict:
+        """Evaluate the response using RAGAS metrics"""
+        singleTurn = SingleTurnSample(
+            question=response["query"],
+            answer=response["answer"],
+            context=response["context"]
+        )
+        singleTurnMetric = SingleTurnMetric(metrics=self.ragas_metrics)
+        results = singleTurnMetric.single_turn_score(singleTurn)
+        logger.info(f"RAGAS results: {results}")
+        response["metrics"] = results
+        return response
     
     def invoke(self, message: str) -> dict:
         """

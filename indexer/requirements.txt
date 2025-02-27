@@ -4,7 +4,6 @@ langfuse
 langchain_qdrant
 langchain_community
 langchain-huggingface
-sentence-transformers==2.6.0
 transformers
 asyncio==3.4.3
 fastapi==0.111.0
@@ -16,10 +15,11 @@ python-magic
 python-dotenv
 openpyxl
 docx2txt
-pymupdf
+pymupdf==1.25.2
 pydantic
 fastapi-utilities
 sqlmodel
 nltk
 unstructured
 python-pptx
+fastembed==0.5.1
