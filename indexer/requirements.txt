@@ -16,7 +16,7 @@ python-magic
 python-dotenv
 openpyxl
 docx2txt
-pymupdf
+pymupdf==1.25.1
 pydantic
 fastapi-utilities
 sqlmodel
