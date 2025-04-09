@@ -5,8 +5,6 @@
 **Minima** is an open source RAG on-premises containers, with ability to integrate with ChatGPT and MCP. 
 Minima can also be used as a fully local RAG.
 
-[![smithery badge](https://smithery.ai/badge/minima)](https://smithery.ai/protocol/minima)
-
 Minima currently supports three modes:
 1. Isolated installation – Operate fully on-premises with containers, free from external dependencies such as ChatGPT or Claude. All neural networks (LLM, reranker, embedding) run on your cloud or PC, ensuring your data remains secure.
 
