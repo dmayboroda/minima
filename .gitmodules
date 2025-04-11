@@ -1,3 +1,6 @@
 [submodule "minima-ui"]
     path = minima-ui
     url = git@github.com:pshenok/minima-ui.git
+[submodule "aws"]
+	path = aws
+	url = https://github.com/pshenok/minima-aws.git
