@@ -41,7 +41,7 @@ class Query(BaseModel):
 async def list_tools() -> list[Tool]:
     return [
         Tool(
-            name="query",
+            name="minima-query",
             description="Find a context in local files (PDF, CSV, DOCX, MD, TXT)",
             inputSchema=Query.model_json_schema(),
         )
@@ -52,7 +52,7 @@ async def list_prompts() -> list[Prompt]:
     logging.info("List of prompts")
     return [
         Prompt(
-            name="query",
+            name="minima-query",
             description="Find a context in a local files",
             arguments=[
                 PromptArgument(
@@ -64,7 +64,7 @@ async def list_prompts() -> list[Prompt]:
     
 @server.call_tool()
 async def call_tool(name, arguments: dict) -> list[TextContent]:
-    if name != "query":
+    if name != "minima-query":
         logging.error(f"Unknown tool: {name}")
         raise ValueError(f"Unknown tool: {name}")
 
