@@ -1,8 +1,8 @@
-[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/dmayboroda-minima-badge.png)](https://mseep.ai/app/dmayboroda-minima)
-
 <p align="center">
   <a href="https://www.mnma.ai/" target="blank"><img src="assets/logo-full.svg" width="300" alt="MNMA Logo" /></a>
 </p>
+
+  [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/dmayboroda-minima-badge.png)](https://mseep.ai/app/dmayboroda-minima)
 
 **Minima** is an open source RAG on-premises containers, with ability to integrate with ChatGPT and MCP. 
 Minima can also be used as a fully local RAG.
