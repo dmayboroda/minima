@@ -14,7 +14,9 @@ Minima currently supports three modes:
 
 3. Anthropic Claude – Use Anthropic Claude app to query your local documents. The indexer operates on your local PC, while Anthropic Claude serves as the primary LLM.
 
-### Running as containers
+---
+
+## Running as Containers
 
 1. Create a .env file in the project’s root directory (where you’ll find env.sample). Place .env in the same folder and copy all environment variables from env.sample to .env.
 
@@ -59,7 +61,40 @@ Minima currently supports three modes:
 
 9. Ask anything, and you'll get answers based on local files in {LOCAL_FILES_PATH} folder.
 
-Explanation of Variables:
+---
+
+## Setting up MCP for GitHub Copilot
+To use MCP with GitHub Copilot:
+1. Create a .env file in the project’s root directory (where you’ll find env.sample). Place .env in the same folder and copy all environment variables from env.sample to .env.
+
+2. Ensure your .env file includes the following variables:
+    - LOCAL_FILES_PATH
+    - EMBEDDING_MODEL_ID
+    - EMBEDDING_SIZE
+    - OLLAMA_MODEL
+    - RERANKER_MODEL
+    -USER_ID - required for ChatGPT integration, just use your email
+    - PASSWORD - required for ChatGPT integration, just use any password
+
+3. Create or update the `.vscode/mcp.json` with the following configuration:
+
+````json
+{
+  "servers": {
+    "minima": {
+      "type": "stdio",
+      "command": "path_to_cloned_minima_project/run_in_copilot.sh",
+      "args": [
+        "path_to_cloned_minima_project"
+      ]
+    }
+  }
+}
+````
+
+---
+
+## Variables Explained
 
 **LOCAL_FILES_PATH**: Specify the root folder for indexing (on your cloud or local pc). Indexing is a recursive process, meaning all documents within subfolders of this root folder will also be indexed. Supported file types: .pdf, .xls, .docx, .txt, .md, .csv.
 
@@ -75,6 +110,10 @@ Explanation of Variables:
 
 **PASSWORD**: Put any password here, this is used to create a firebase account for the email specified above.
 
+
+---
+
+## Examples
 
 Example of .env file for on-premises/local usage:
 ```
@@ -106,7 +145,9 @@ PASSWORD=password # you can create here password that you want
 
 Also, you can run minima using **run.sh**.
 
-### Installing via Smithery (MCP usage)
+---
+
+## Installing via Smithery (MCP usage)
 
 To install Minima for Claude Desktop automatically via [Smithery](https://smithery.ai/protocol/minima):
 
