@@ -60,38 +60,6 @@ Minima currently supports three modes:
 8. To use fully local installation go to `cd electron`, then run `npm install` and `npm start` which will launch Minima electron app.
 
 9. Ask anything, and you'll get answers based on local files in {LOCAL_FILES_PATH} folder.
-
----
-
-## Setting up MCP for GitHub Copilot
-To use MCP with GitHub Copilot:
-1. Create a .env file in the project’s root directory (where you’ll find env.sample). Place .env in the same folder and copy all environment variables from env.sample to .env.
-
-2. Ensure your .env file includes the following variables:
-    - LOCAL_FILES_PATH
-    - EMBEDDING_MODEL_ID
-    - EMBEDDING_SIZE
-    - OLLAMA_MODEL
-    - RERANKER_MODEL
-    -USER_ID - required for ChatGPT integration, just use your email
-    - PASSWORD - required for ChatGPT integration, just use any password
-
-3. Create or update the `.vscode/mcp.json` with the following configuration:
-
-````json
-{
-  "servers": {
-    "minima": {
-      "type": "stdio",
-      "command": "path_to_cloned_minima_project/run_in_copilot.sh",
-      "args": [
-        "path_to_cloned_minima_project"
-      ]
-    }
-  }
-}
-````
-
 ---
 
 ## Variables Explained
@@ -110,12 +78,11 @@ To use MCP with GitHub Copilot:
 
 **PASSWORD**: Put any password here, this is used to create a firebase account for the email specified above.
 
-
 ---
 
 ## Examples
 
-Example of .env file for on-premises/local usage:
+**Example of .env file for on-premises/local usage:**
 ```
 LOCAL_FILES_PATH=/Users/davidmayboroda/Downloads/PDFs/
 EMBEDDING_MODEL_ID=sentence-transformers/all-mpnet-base-v2
@@ -126,7 +93,7 @@ RERANKER_MODEL=BAAI/bge-reranker-base # please, choose any BAAI reranker model
 
 To use a chat ui, please navigate to **http://localhost:3000**
 
-Example of .env file for Claude app:
+**Example of .env file for Claude app:**
 ```
 LOCAL_FILES_PATH=/Users/davidmayboroda/Downloads/PDFs/
 EMBEDDING_MODEL_ID=sentence-transformers/all-mpnet-base-v2
@@ -134,7 +101,31 @@ EMBEDDING_SIZE=768
 ```
 For the Claude app, please apply the changes to the claude_desktop_config.json file as outlined above.
 
-Example of .env file for ChatGPT custom GPT usage:
+**To use MCP with GitHub Copilot:**
+1. Create a .env file in the project’s root directory (where you’ll find env.sample). Place .env in the same folder and copy all environment variables from env.sample to .env.
+
+2. Ensure your .env file includes the following variables:
+    - LOCAL_FILES_PATH
+    - EMBEDDING_MODEL_ID
+    - EMBEDDING_SIZE
+      
+3. Create or update the `.vscode/mcp.json` with the following configuration:
+
+````json
+{
+  "servers": {
+    "minima": {
+      "type": "stdio",
+      "command": "path_to_cloned_minima_project/run_in_copilot.sh",
+      "args": [
+        "path_to_cloned_minima_project"
+      ]
+    }
+  }
+}
+````
+
+**Example of .env file for ChatGPT custom GPT usage:**
 ```
 LOCAL_FILES_PATH=/Users/davidmayboroda/Downloads/PDFs/
 EMBEDDING_MODEL_ID=sentence-transformers/all-mpnet-base-v2
