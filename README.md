@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/dmayboroda-minima-badge.png)](https://mseep.ai/app/dmayboroda-minima)
+
 <p align="center">
   <a href="https://www.mnma.ai/" target="blank"><img src="assets/logo-full.svg" width="300" alt="MNMA Logo" /></a>
 </p>
