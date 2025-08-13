@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://www.mnma.ai/" target="blank"><img src="assets/logo-full.svg" width="300" alt="MNMA Logo" /></a>
+  <a href="https://mnma.ai/" target="blank"><img src="assets/logo-full.svg" width="300" alt="MNMA Logo" /></a>
 </p>
 
 **Minima** is an open source RAG on-premises containers, with ability to integrate with ChatGPT and MCP. 
