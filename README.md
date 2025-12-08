@@ -97,9 +97,9 @@ Select an option:
 
 **OLLAMA_MODEL**: Set up the Ollama model, use an ID available on the Ollama [site](https://ollama.com/search). Please, use LLM model here, not an embedding. This is only required when using Ollama (not needed when using custom LLM).
 
-**LLM_BASE_URL**: (Optional) Base URL for your custom OpenAI-compatible LLM API endpoint (e.g., `http://your-llm-address:port/v1`). When this is set, Ollama will not be used and you don't need to deploy it.
+**LLM_BASE_URL**: (Optional) Base URL for your custom OpenAI-compatible LLM API endpoint. When this is set, Ollama will not be used and you don't need to deploy it.
 
-**LLM_MODEL**: (Optional) Model name for your custom LLM (e.g., `Qwen/Qwen3-32B-FP8`). Required when LLM_BASE_URL is set.
+**LLM_MODEL**: (Optional) Model name for your custom LLM. Required when LLM_BASE_URL is set.
 
 **LLM_API_KEY**: (Optional) API key for your custom LLM. If your LLM doesn't require authentication, you can omit this or set it to any value.
 
@@ -128,7 +128,7 @@ LOCAL_FILES_PATH=/Users/davidmayboroda/Downloads/PDFs/
 EMBEDDING_MODEL_ID=sentence-transformers/all-mpnet-base-v2
 EMBEDDING_SIZE=768
 LLM_BASE_URL=http://your-llm-address:port/v1 # Your custom LLM endpoint
-LLM_MODEL=Qwen/Qwen3-32B-FP8 # Your model name
+LLM_MODEL=Qwen/Qwen-1.7B # Your model name
 LLM_API_KEY=not-needed # Optional: API key if required
 
 # NOTE: OLLAMA_MODEL and RERANKER_MODEL are NOT needed for custom LLM mode
@@ -173,40 +173,8 @@ The custom LLM mode uses a different workflow compared to Ollama:
 - **LocalAI** - OpenAI-compatible local inference
 - **OpenAI API** - Directly use OpenAI's API
 - **Any OpenAI-compatible endpoint**
-
-**Example Deployments:**
-
-**Using vLLM:**
-```bash
-# Start vLLM server
-python -m vllm.entrypoints.openai.api_server \
-    --model Qwen/Qwen2.5-32B-Instruct \
-    --port 8000
-
-# In .env
-LLM_BASE_URL=http://localhost:8000/v1
-LLM_MODEL=Qwen/Qwen2.5-32B-Instruct
-```
-
-**Using Ollama Server:**
-```bash
-# Start Ollama in server mode
-ollama serve
-
-# In .env
-LLM_BASE_URL=http://localhost:11434/v1
-LLM_MODEL=qwen2.5:32b
-```
-
-**Using Remote LLM:**
-```bash
-# In .env (your deployed LLM)
-LLM_BASE_URL=http://your-llm-address:port/v1
-LLM_MODEL=Qwen/Qwen3-32B-FP8
-LLM_API_KEY=your-api-key-if-needed
-```
-
-**Using run.sh:**
+- 
+**run.sh:**
 
 The `run.sh` script now includes a custom LLM option:
 
