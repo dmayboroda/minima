@@ -44,7 +44,19 @@ async def loop(
             )
             
         elif data:
+            # Send processing status
+            response_queue.enqueue(
+                json.dumps({
+                    "reporter": "output_message",
+                    "type": "processing",
+                    "message": "Processing your request...",
+                })
+            )
+
+            # Process the query
             result = llm_chain.invoke(data)
+
+            # Send the answer
             response_queue.enqueue(
                 json.dumps({
                     "reporter": "output_message",

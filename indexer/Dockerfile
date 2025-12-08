@@ -5,8 +5,9 @@ RUN pip install --upgrade pip
 
 ARG EMBEDDING_MODEL_ID
 
-RUN pip install huggingface_hub
-RUN huggingface-cli download $EMBEDDING_MODEL_ID --repo-type model
+# Install latest huggingface-hub with CLI support
+RUN pip install --upgrade "huggingface_hub[cli]"
+RUN hf download $EMBEDDING_MODEL_ID
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
