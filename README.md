@@ -139,20 +139,6 @@ LLM_API_KEY=not-needed # Optional: API key if required
 
 To use a chat ui, please navigate to **http://localhost:3000**
 
-### Custom LLM Mode Features
-
-The custom LLM mode offers several advantages:
-
-**Benefits:**
-- ✅ **No Ollama Required** - Lighter Docker deployment, saves resources
-- ✅ **Bring Your Own LLM** - Use any OpenAI-compatible API (vLLM, TGI, Ollama server, OpenAI, etc.)
-- ✅ **Tool-Based Retrieval** - LLM decides when to search documents using function calling
-- ✅ **No Reranker Overhead** - Simpler retrieval pipeline, faster responses
-- ✅ **Flexible Deployment** - LLM can be local, on your server, or in the cloud
-- ✅ **Cost Control** - Use your own infrastructure or cheaper API providers
-
-**How It Works:**
-
 The custom LLM mode uses a different workflow compared to Ollama:
 
 **Ollama Workflow:**
@@ -174,7 +160,6 @@ The custom LLM mode uses a different workflow compared to Ollama:
 - **OpenAI API** - Directly use OpenAI's API
 - **Any OpenAI-compatible endpoint**
 - 
-**run.sh:**
 
 The `run.sh` script now includes a custom LLM option:
 
