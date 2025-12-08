@@ -159,14 +159,6 @@ The custom LLM mode uses a different workflow compared to Ollama:
 - **LocalAI** - OpenAI-compatible local inference
 - **OpenAI API** - Directly use OpenAI's API
 - **Any OpenAI-compatible endpoint**
-- 
-
-The `run.sh` script now includes a custom LLM option:
-
-```bash
-./run.sh
-# Select option 2) Custom LLM (OpenAI-compatible API)
-```
 
 This will automatically use `docker-compose-custom-llm.yml` which deploys only the necessary services (no Ollama container).
 
