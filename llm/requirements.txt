@@ -5,6 +5,7 @@ langchain
 langchain-core
 langchain_qdrant
 langchain-ollama
+langchain-openai
 langchain_community==0.2.17
 langchain-huggingface
 sentence-transformers==2.6.0
