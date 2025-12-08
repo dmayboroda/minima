@@ -4,6 +4,7 @@ langfuse
 langchain_qdrant
 langchain_community
 langchain-huggingface
+langchain-text-splitters
 sentence-transformers==2.6.0
 transformers
 asyncio==3.4.3
@@ -23,3 +24,4 @@ sqlmodel
 nltk
 unstructured
 python-pptx
+aiofiles

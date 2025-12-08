@@ -6,8 +6,14 @@ ARG RERANKER_MODEL
 
 RUN pip install --upgrade pip
 COPY requirements.txt .
-RUN pip install huggingface_hub
-RUN huggingface-cli download $RERANKER_MODEL --repo-type model
+# Install latest huggingface-hub with CLI support
+RUN pip install --upgrade "huggingface_hub[cli]"
+# Only download reranker if RERANKER_MODEL is set (for Ollama mode)
+RUN if [ -n "$RERANKER_MODEL" ]; then \
+        hf download $RERANKER_MODEL; \
+    else \
+        echo "Skipping reranker download (not needed for custom LLM mode)"; \
+    fi
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
