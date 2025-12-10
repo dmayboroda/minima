@@ -207,14 +207,6 @@ Also, you can run minima using **run.sh**.
 
 ---
 
-## Installing via Smithery (MCP usage)
-
-To install Minima for Claude Desktop automatically via [Smithery](https://smithery.ai/protocol/minima):
-
-```bash
-npx -y @smithery/cli install minima --client claude
-```
-
 **For MCP usage, please be sure that your local machines python is >=3.10 and 'uv' installed.**
 
 Minima (https://github.com/dmayboroda/minima) is licensed under the Mozilla Public License v2.0 (MPLv2).
