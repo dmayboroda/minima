@@ -10,7 +10,13 @@ from pathlib import Path
 from qdrant_client import QdrantClient
 from langchain_qdrant import QdrantVectorStore
 from langchain_huggingface import HuggingFaceEmbeddings
-from qdrant_client.http.models import Distance, VectorParams, Filter, FieldCondition, MatchValue
+from qdrant_client.http.models import (
+    Distance, 
+    VectorParams, 
+    Filter, 
+    FieldCondition, 
+    MatchValue
+)
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from langchain_community.document_loaders import (
@@ -22,7 +28,7 @@ from langchain_community.document_loaders import (
     UnstructuredPowerPointLoader,
 )
 
-from storage import MinimaStore, IndexingStatus
+from storage import MinimaStore, IndexingStatus, FileStatus
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +145,10 @@ class Indexer:
         indexing_status: IndexingStatus = MinimaStore.check_needs_indexing(fpath=path, last_updated_seconds=last_updated_seconds)
         if indexing_status != IndexingStatus.no_need_reindexing:
             logger.info(f"Indexing needed for {path} with status: {indexing_status}")
+
+            # Set status to indexing
+            MinimaStore.update_file_status(fpath=path, status=FileStatus.indexing)
+
             try:
                 if indexing_status == IndexingStatus.need_reindexing:
                     logger.info(f"Removing {path} from index storage for reindexing")
@@ -147,21 +157,35 @@ class Indexer:
                 ids = self._process_file(loader)
                 if ids:
                     logger.info(f"Successfully indexed {path} with IDs: {ids}")
+                    # Set status to indexed
+                    MinimaStore.update_file_status(fpath=path, status=FileStatus.indexed)
+                else:
+                    logger.warning(f"No documents indexed for {path}")
+                    MinimaStore.update_file_status(fpath=path, status=FileStatus.failed)
             except Exception as e:
                 logger.error(f"Failed to index file {path}: {str(e)}")
+                # Set status to failed
+                MinimaStore.update_file_status(fpath=path, status=FileStatus.failed)
         else:
             logger.info(f"Skipping {path}, no indexing required. timestamp didn't change")
         end = time.time()
-        logger.info(f"Processing took {end - start} seconds for file {path}")
+        indexing_time = end - start
+        logger.info(f"Processing took {indexing_time} seconds for file {path}")
+
+        # Save indexing time to database
+        if indexing_status != IndexingStatus.no_need_reindexing:
+            MinimaStore.update_indexing_time(fpath=path, indexing_time_seconds=indexing_time)
 
     def purge(self, message: Dict[str, any]) -> None:
-        existing_file_paths: list[str] = message["existing_file_paths"]
-        files_to_remove = MinimaStore.find_removed_files(existing_file_paths=set(existing_file_paths))
-        if len(files_to_remove) > 0:
-            logger.info(f"purge processing removing old files {files_to_remove}")
-            self.remove_from_storage(files_to_remove)
-        else:
-            logger.info("Nothing to purge")
+        # Disabled automatic purge - files should only be removed via /files/remove API
+        logger.info("Purge called but automatic removal is disabled. Use /files/remove API to remove files.")
+        # existing_file_paths: list[str] = message["existing_file_paths"]
+        # files_to_remove = MinimaStore.find_removed_files(existing_file_paths=set(existing_file_paths))
+        # if len(files_to_remove) > 0:
+        #     logger.info(f"purge processing removing old files {files_to_remove}")
+        #     self.remove_from_storage(files_to_remove)
+        # else:
+        #     logger.info("Nothing to purge")
 
     def remove_from_storage(self, files_to_remove: list[str]):
         filter_conditions = Filter(
