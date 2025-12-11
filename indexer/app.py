@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from storage import MinimaStore
 from async_queue import AsyncQueue
 from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from fastapi_utilities import repeat_every
 from async_loop import index_loop, crawl_loop
@@ -51,8 +52,26 @@ class Query(BaseModel):
 
 class FileUploadResponse(BaseModel):
     status: str
-    files: List[str]
+    files: List[dict]  # Changed from List[str] to List[dict] to include status
     message: str
+
+
+class FileRemoveRequest(BaseModel):
+    files: List[str]
+
+
+class FileRemoveResponse(BaseModel):
+    status: str
+    removed_files: List[str]
+    message: str
+
+
+class FileStatusRequest(BaseModel):
+    files: List[str]
+
+
+class FileStatusResponse(BaseModel):
+    files: List[dict]
 
 
 @router.post(
@@ -157,15 +176,136 @@ async def add_files(files: List[UploadFile] = File(...)):
     if not uploaded_files and errors:
         raise HTTPException(status_code=400, detail="; ".join(errors))
 
+    # Create response with file paths and initial status
+    files_with_status = [
+        {
+            "path": fpath,
+            "status": "uploaded"
+        }
+        for fpath in uploaded_files
+    ]
+
     response_message = f"Successfully uploaded {len(uploaded_files)} file(s) for indexing"
     if errors:
         response_message += f". Errors: {'; '.join(errors)}"
 
     return FileUploadResponse(
         status="success" if uploaded_files else "partial",
-        files=uploaded_files,
+        files=files_with_status,
         message=response_message
     )
+
+
+@router.post(
+    "/files/remove",
+    response_description='Remove files from index',
+    response_model=FileRemoveResponse
+)
+async def remove_files(request: FileRemoveRequest):
+    """
+    Remove one or more files from the index and Qdrant vector store.
+    Files are deleted from both the SQLite database and Qdrant.
+    """
+    logger.info(f"Received request to remove {len(request.files)} files")
+
+    if not request.files:
+        raise HTTPException(status_code=400, detail="No files specified for removal")
+
+    try:
+        # Remove from Qdrant vector store
+        indexer.remove_from_storage(files_to_remove=request.files)
+
+        # Remove from SQLite database
+        for fpath in request.files:
+            try:
+                MinimaStore.delete_m_doc(fpath)
+                logger.info(f"Removed {fpath} from database")
+            except Exception as e:
+                logger.warning(f"File {fpath} not found in database: {str(e)}")
+
+        return FileRemoveResponse(
+            status="success",
+            removed_files=request.files,
+            message=f"Successfully removed {len(request.files)} file(s) from index"
+        )
+    except Exception as e:
+        logger.error(f"Error removing files: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to remove files: {str(e)}")
+
+
+@router.get(
+    "/files/stats",
+    response_description='Get indexing statistics'
+)
+async def get_indexing_stats():
+    """
+    Get indexing statistics including:
+    - Total number of indexed files
+    - Total indexing time
+    - Average indexing time per file
+    - Individual file indexing times
+    """
+    logger.info("Received request for indexing statistics")
+    try:
+        stats = MinimaStore.get_indexing_stats()
+        return stats
+    except Exception as e:
+        logger.error(f"Error retrieving indexing stats: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve stats: {str(e)}")
+
+
+@router.post(
+    "/files/status",
+    response_description='Check indexing status of files',
+    response_model=FileStatusResponse
+)
+async def check_files_status(request: FileStatusRequest):
+    """
+    Check the indexing status of specific files.
+    Returns status for each file: uploaded, indexing, indexed, or failed.
+    UI can poll this endpoint to show loading indicators.
+    """
+    logger.info(f"Received status check for {len(request.files)} files")
+
+    if not request.files:
+        raise HTTPException(status_code=400, detail="No files specified")
+
+    try:
+        files_status = MinimaStore.get_files_status(request.files)
+        return FileStatusResponse(files=files_status)
+    except Exception as e:
+        logger.error(f"Error retrieving file status: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve status: {str(e)}")
+
+
+@router.get(
+    "/files",
+    response_description='List all files in the index'
+)
+async def list_indexed_files():
+    """
+    Get a list of all files currently in the index.
+    Returns file path, status, indexing time, and last updated timestamp for each file.
+    """
+    logger.info("Received request to list all indexed files")
+    try:
+        docs = MinimaStore.get_all_docs()
+        files = [
+            {
+                "path": doc.fpath,
+                "status": doc.status,
+                "indexing_time_seconds": round(doc.indexing_time_seconds, 2) if doc.indexing_time_seconds else None,
+                "last_updated": doc.last_updated_seconds
+            }
+            for doc in docs
+        ]
+        return {
+            "total": len(files),
+            "files": files
+        }
+    except Exception as e:
+        logger.error(f"Error listing indexed files: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to list files: {str(e)}")
 
 
 @asynccontextmanager
@@ -189,6 +329,16 @@ def create_app() -> FastAPI:
         docs_url="/indexer/docs",
         lifespan=lifespan
     )
+
+    # Add CORS middleware to allow frontend requests
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000", "http://localhost:3001"],  # React dev server
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     app.include_router(router)
     return app
 
@@ -204,7 +354,7 @@ async def trigger_re_indexer():
         logger.error(f"error in scheduled reindexing {e}")
 
 
-@repeat_every(seconds=60*2)
+@repeat_every(seconds=15)
 async def schedule_reindexing():
     await trigger_re_indexer()
 
