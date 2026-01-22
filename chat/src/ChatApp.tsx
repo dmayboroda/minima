@@ -246,7 +246,7 @@ const ChatApp: React.FC = () => {
 
     // Fetch indexed files
     const fetchIndexedFiles = async () => {
-        try:
+        try{
             const response = await fetch('http://localhost:8001/files', {
                 headers: {
                     'X-User-Id': userId
