@@ -50,6 +50,7 @@ const ChatApp: React.FC = () => {
     const [indexedFiles, setIndexedFiles] = useState<IndexedFile[]>([]);
     const [isLoadingFiles, setIsLoadingFiles] = useState(false);
     const [isTyping, setIsTyping] = useState(false);
+    const [userId, setUserId] = useState<string>('default_user');
     const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
     // Toggle light/dark theme
@@ -66,7 +67,7 @@ const ChatApp: React.FC = () => {
 
     // WebSocket Setup
     useEffect(() => {
-        const webSocket = new WebSocket('ws://localhost:8003/llm/');
+        const webSocket = new WebSocket(`ws://localhost:8003/llm/?user_id=${userId}`);
 
         webSocket.onmessage = (event) => {
             const message_curr: Message = JSON.parse(event.data);
@@ -115,7 +116,7 @@ const ChatApp: React.FC = () => {
         return () => {
             webSocket.close();
         };
-    }, []);
+    }, [userId]);
 
     // Send message
     const sendMessage = (): void => {
@@ -231,6 +232,7 @@ const ChatApp: React.FC = () => {
             });
 
             xhr.open('POST', 'http://localhost:8001/files/add');
+            xhr.setRequestHeader('X-User-Id', userId);
             xhr.send(formData);
         } catch (error) {
             console.error('Upload error:', error);
@@ -244,8 +246,12 @@ const ChatApp: React.FC = () => {
 
     // Fetch indexed files
     const fetchIndexedFiles = async () => {
-        try {
-            const response = await fetch('http://localhost:8001/files');
+        try:
+            const response = await fetch('http://localhost:8001/files', {
+                headers: {
+                    'X-User-Id': userId
+                }
+            });
             const data = await response.json();
             const newFiles = data.files || [];
 
@@ -268,6 +274,7 @@ const ChatApp: React.FC = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-User-Id': userId,
                 },
                 body: JSON.stringify({ files: [filePath] }),
             });
@@ -305,7 +312,7 @@ const ChatApp: React.FC = () => {
         }, 3000); // Poll every 3 seconds
 
         return () => clearInterval(interval);
-    }, []);
+    }, [userId]);
 
     // Get status tag
     const getStatusTag = (status: string) => {

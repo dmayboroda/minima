@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Sequence, Optional, List
 from langchain.schema import Document
 from qdrant_client import QdrantClient
+from qdrant_client.http.models import Filter, FieldCondition, MatchValue
 from langchain_openai import ChatOpenAI
 from minima_embed import MinimaEmbeddings
 from langgraph.graph import START, StateGraph
@@ -52,6 +53,7 @@ class OpenAIState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
     context: Optional[List[Document]]
     answer: str
+    user_id: str
 
 
 class OpenAIChain:
@@ -85,8 +87,8 @@ class OpenAIChain:
             embedding=embed_model
         )
 
-    def _create_search_tool(self):
-        """Create a search tool for document retrieval"""
+    def _create_search_tool(self, user_id: str = "default_user"):
+        """Create a search tool for document retrieval filtered by user_id"""
         @tool
         def search_documents(query: str) -> str:
             """
@@ -98,10 +100,18 @@ class OpenAIChain:
             Returns:
                 A string containing the relevant document excerpts
             """
-            logger.info(f"Searching documents for: {query}")
+            logger.info(f"Searching documents for: {query} (user: {user_id})")
 
-            # Use basic retriever without reranking for OpenAI workflow
-            retriever = self.document_store.as_retriever(search_kwargs={"k": 5})
+            # Create user-filtered retriever
+            user_filter = Filter(
+                must=[
+                    FieldCondition(key="user_id", match=MatchValue(value=user_id))
+                ]
+            )
+
+            retriever = self.document_store.as_retriever(
+                search_kwargs={"filter": user_filter, "k": 5}
+            )
             docs = retriever.invoke(query)
 
             if not docs:
@@ -114,18 +124,19 @@ class OpenAIChain:
                 content = doc.page_content
                 results.append(f"[Document {i} - {file_path}]\n{content}\n")
 
-            logger.info(f"Found {len(docs)} relevant documents")
+            logger.info(f"Found {len(docs)} relevant documents for user {user_id}")
             return "\n".join(results)
 
         return search_documents
 
     def _create_graph(self) -> StateGraph:
         """Create the processing graph with tool-based retrieval"""
-        # Create search tool
-        search_tool = self._create_search_tool()
+        # Note: search tool will be created per-request with user_id from state
+        # Create a default tool for binding (will be recreated in _execute_tools with user_id)
+        default_search_tool = self._create_search_tool()
 
         # Bind tool to LLM
-        llm_with_tools = self.llm.bind_tools([search_tool])
+        llm_with_tools = self.llm.bind_tools([default_search_tool])
 
         workflow = StateGraph(state_schema=OpenAIState)
         workflow.add_node("agent", lambda state: self._call_agent(state, llm_with_tools))
@@ -160,8 +171,9 @@ class OpenAIChain:
         """Execute the tool calls made by the LLM"""
         messages = state["messages"]
         last_message = messages[-1]
+        user_id = state.get("user_id", "default_user")
 
-        logger.info(f"Executing tools for message: {last_message}")
+        logger.info(f"Executing tools for message: {last_message} (user: {user_id})")
 
         # Get tool calls from the last message
         tool_calls = last_message.tool_calls if hasattr(last_message, 'tool_calls') else []
@@ -170,9 +182,9 @@ class OpenAIChain:
             logger.warning("No tool calls found in last message")
             return {"messages": []}
 
-        # Execute each tool call
+        # Execute each tool call with user-filtered search
         tool_messages = []
-        search_tool = self._create_search_tool()
+        search_tool = self._create_search_tool(user_id)
 
         for tool_call in tool_calls:
             logger.info(f"Executing tool: {tool_call}")
@@ -203,18 +215,19 @@ class OpenAIChain:
         logger.info("Ending workflow")
         return "end"
 
-    def invoke(self, message: str) -> dict:
+    def invoke(self, message: str, user_id: str = "default_user") -> dict:
         """
         Process a user message and return the response
 
         Args:
             message: The user's input message
+            user_id: The user ID for filtering documents
 
         Returns:
             dict: Contains the model's response or error information
         """
         try:
-            logger.info(f"Processing query: {message}")
+            logger.info(f"Processing query: {message} (user: {user_id})")
             config = {
                 "configurable": {
                     "thread_id": uuid.uuid4(),
@@ -223,7 +236,7 @@ class OpenAIChain:
             }
 
             result = self.graph.invoke(
-                {"messages": [HumanMessage(content=message)]},
+                {"messages": [HumanMessage(content=message)], "user_id": user_id},
                 config=config
             )
             logger.info(f"OpenAI OUTPUT: {result}")

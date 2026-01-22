@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Sequence, Optional
 from langchain.schema import Document
 from qdrant_client import QdrantClient
+from qdrant_client.http.models import Filter, FieldCondition, MatchValue
 from langchain_ollama import ChatOllama
 from minima_embed import MinimaEmbeddings
 from langgraph.graph import START, StateGraph
@@ -84,6 +85,7 @@ class OllamaState(TypedDict):
     context: str
     answer: str
     init_query: str
+    user_id: str
 
 
 class OllamaChain:
@@ -95,7 +97,7 @@ class OllamaChain:
         self.config = config or OllamaConfig()
         self.llm = self._setup_llm()
         self.document_store = self._setup_document_store()
-        self.chain = self._setup_chain()
+        # Chain will be created per-request with user_id filter
         self.graph = self._create_graph()
 
     def _setup_llm(self) -> ChatOllama:
@@ -117,10 +119,20 @@ class OllamaChain:
             embedding=embed_model
         )
 
-    def _setup_chain(self):
-        """Set up the retrieval and QA chain with reranking"""
-        # Initialize retriever with reranking
-        base_retriever = self.document_store.as_retriever()
+    def _create_user_retriever(self, user_id: str = "default_user"):
+        """Create a retriever filtered by user_id with reranking"""
+        # Create user-filtered base retriever
+        user_filter = Filter(
+            must=[
+                FieldCondition(key="user_id", match=MatchValue(value=user_id))
+            ]
+        )
+
+        base_retriever = self.document_store.as_retriever(
+            search_kwargs={"filter": user_filter, "k": 5}
+        )
+
+        # Add reranker on top
         reranker = HuggingFaceCrossEncoder(
             model_name=self.config.rerank_model,
             model_kwargs={'device': self.config.device},
@@ -129,6 +141,13 @@ class OllamaChain:
             base_compressor=CrossEncoderReranker(model=reranker, top_n=3),
             base_retriever=base_retriever
         )
+
+        return compression_retriever
+
+    def _setup_chain(self, user_id: str = "default_user"):
+        """Set up the retrieval and QA chain with reranking filtered by user_id"""
+        # Get user-filtered retriever with reranking
+        compression_retriever = self._create_user_retriever(user_id)
 
         # Create history-aware retriever
         contextualize_prompt = ChatPromptTemplate.from_messages([
@@ -177,9 +196,13 @@ class OllamaChain:
 
     def _call_model(self, state: OllamaState) -> dict:
         """Process the query through the model with retrieval chain"""
-        logger.info(f"Processing query: {state['init_query']}")
+        user_id = state.get("user_id", "default_user")
+        logger.info(f"Processing query: {state['init_query']} (user: {user_id})")
         logger.info(f"Enhanced query: {state['input']}")
-        response = self.chain.invoke(state)
+
+        # Create chain with user-filtered retriever
+        chain = self._setup_chain(user_id)
+        response = chain.invoke(state)
         logger.info(f"Received response: {response['answer']}")
         return {
             "chat_history": [
@@ -190,18 +213,19 @@ class OllamaChain:
             "answer": response["answer"],
         }
 
-    def invoke(self, message: str) -> dict:
+    def invoke(self, message: str, user_id: str = "default_user") -> dict:
         """
         Process a user message and return the response
 
         Args:
             message: The user's input message
+            user_id: The user ID for filtering documents
 
         Returns:
             dict: Contains the model's response or error information
         """
         try:
-            logger.info(f"Processing query: {message}")
+            logger.info(f"Processing query: {message} (user: {user_id})")
             config = {
                 "configurable": {
                     "thread_id": uuid.uuid4(),
@@ -210,7 +234,7 @@ class OllamaChain:
             }
 
             result = self.graph.invoke(
-                {"input": message},
+                {"input": message, "user_id": user_id},
                 config=config
             )
             logger.info(f"Ollama OUTPUT: {result}")

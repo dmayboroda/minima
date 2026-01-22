@@ -22,6 +22,7 @@ class FileStatus(str, Enum):
 
 class MinimaDoc(SQLModel, table=True):
     fpath: str = Field(primary_key=True)
+    user_id: str = Field(index=True, default="default_user")
     last_updated_seconds: int | None = Field(default=None, index=True)
     indexing_time_seconds: float | None = Field(default=None)
     status: str = Field(default=FileStatus.uploaded)
@@ -29,6 +30,7 @@ class MinimaDoc(SQLModel, table=True):
 
 class MinimaDocUpdate(SQLModel):
     fpath: str | None = None
+    user_id: str | None = None
     last_updated_seconds: int | None = None
     indexing_time_seconds: float | None = None
     status: str | None = None
@@ -75,6 +77,14 @@ class MinimaStore(metaclass=Singleton):
                 cursor.execute(f"ALTER TABLE minimadoc ADD COLUMN status VARCHAR DEFAULT '{FileStatus.uploaded}'")
                 conn.commit()
 
+            # Add user_id column if it doesn't exist
+            if 'user_id' not in existing_columns:
+                logger.info("Adding user_id column to minimadoc table")
+                cursor.execute("ALTER TABLE minimadoc ADD COLUMN user_id VARCHAR DEFAULT 'default_user'")
+                cursor.execute("CREATE INDEX idx_user_id ON minimadoc(user_id)")
+                conn.commit()
+                logger.info("user_id column and index added successfully")
+
             conn.close()
             logger.info("Database schema migration completed successfully")
         except Exception as e:
@@ -82,9 +92,12 @@ class MinimaStore(metaclass=Singleton):
             logger.error("You may need to manually update the database or delete it to recreate with new schema")
 
     @staticmethod
-    def delete_m_doc(fpath: str) -> None:
+    def delete_m_doc(fpath: str, user_id: str = "default_user") -> None:
         with Session(engine) as session:
-            statement = select(MinimaDoc).where(MinimaDoc.fpath == fpath)
+            statement = select(MinimaDoc).where(
+                MinimaDoc.fpath == fpath,
+                MinimaDoc.user_id == user_id
+            )
             results = session.exec(statement)
             doc = results.one()
             session.delete(doc)
@@ -92,19 +105,22 @@ class MinimaStore(metaclass=Singleton):
             print("doc deleted:", doc)
 
     @staticmethod
-    def select_m_doc(fpath: str) -> MinimaDoc:
+    def select_m_doc(fpath: str, user_id: str = "default_user") -> MinimaDoc:
         with Session(engine) as session:
-            statement = select(MinimaDoc).where(MinimaDoc.fpath == fpath)
+            statement = select(MinimaDoc).where(
+                MinimaDoc.fpath == fpath,
+                MinimaDoc.user_id == user_id
+            )
             results = session.exec(statement)
             doc = results.one()
             print("doc:", doc)
             return doc
 
     @staticmethod
-    def find_removed_files(existing_file_paths: set[str]):
+    def find_removed_files(existing_file_paths: set[str], user_id: str = "default_user"):
         removed_files: list[str] = []
         with Session(engine) as session:
-            statement = select(MinimaDoc)
+            statement = select(MinimaDoc).where(MinimaDoc.user_id == user_id)
             results = session.exec(statement)
             logger.debug(f"find_removed_files count found {results}")
             for doc in results:
@@ -113,15 +129,18 @@ class MinimaStore(metaclass=Singleton):
                     logger.debug(f"find_removed_files file {doc.fpath} does not exist anymore, removing")
                     removed_files.append(doc.fpath)
         for fpath in removed_files:
-            MinimaStore.delete_m_doc(fpath)
+            MinimaStore.delete_m_doc(fpath, user_id)
         return removed_files
 
     @staticmethod
-    def check_needs_indexing(fpath: str, last_updated_seconds: int) -> IndexingStatus:
+    def check_needs_indexing(fpath: str, last_updated_seconds: int, user_id: str = "default_user") -> IndexingStatus:
         indexing_status: IndexingStatus = IndexingStatus.no_need_reindexing
         try:
             with Session(engine) as session:
-                statement = select(MinimaDoc).where(MinimaDoc.fpath == fpath)
+                statement = select(MinimaDoc).where(
+                    MinimaDoc.fpath == fpath,
+                    MinimaDoc.user_id == user_id
+                )
                 results = session.exec(statement)
                 doc = results.first()
                 if doc is not None:
@@ -139,7 +158,7 @@ class MinimaStore(metaclass=Singleton):
                     else:
                         logger.debug(f"file {fpath} doesn't need indexing, timestamp same")
                 else:
-                    doc = MinimaDoc(fpath=fpath, last_updated_seconds=last_updated_seconds)
+                    doc = MinimaDoc(fpath=fpath, last_updated_seconds=last_updated_seconds, user_id=user_id)
                     session.add(doc)
                     session.commit()
                     logger.debug(f"file {fpath} needs indexing, new file")
@@ -150,10 +169,13 @@ class MinimaStore(metaclass=Singleton):
             return IndexingStatus.no_need_reindexing
 
     @staticmethod
-    def update_indexing_time(fpath: str, indexing_time_seconds: float) -> None:
+    def update_indexing_time(fpath: str, indexing_time_seconds: float, user_id: str = "default_user") -> None:
         try:
             with Session(engine) as session:
-                statement = select(MinimaDoc).where(MinimaDoc.fpath == fpath)
+                statement = select(MinimaDoc).where(
+                    MinimaDoc.fpath == fpath,
+                    MinimaDoc.user_id == user_id
+                )
                 results = session.exec(statement)
                 doc = results.first()
                 if doc is not None:
@@ -167,15 +189,15 @@ class MinimaStore(metaclass=Singleton):
             logger.error(f"Error updating indexing time for {fpath}: {e}")
 
     @staticmethod
-    def get_all_docs() -> list[MinimaDoc]:
+    def get_all_docs(user_id: str = "default_user") -> list[MinimaDoc]:
         with Session(engine) as session:
-            statement = select(MinimaDoc)
+            statement = select(MinimaDoc).where(MinimaDoc.user_id == user_id)
             results = session.exec(statement)
             return list(results.all())
 
     @staticmethod
-    def get_indexing_stats() -> dict:
-        docs = MinimaStore.get_all_docs()
+    def get_indexing_stats(user_id: str = "default_user") -> dict:
+        docs = MinimaStore.get_all_docs(user_id)
         if not docs:
             return {
                 "total_files": 0,
@@ -204,10 +226,13 @@ class MinimaStore(metaclass=Singleton):
         }
 
     @staticmethod
-    def update_file_status(fpath: str, status: FileStatus) -> None:
+    def update_file_status(fpath: str, status: FileStatus, user_id: str = "default_user") -> None:
         try:
             with Session(engine) as session:
-                statement = select(MinimaDoc).where(MinimaDoc.fpath == fpath)
+                statement = select(MinimaDoc).where(
+                    MinimaDoc.fpath == fpath,
+                    MinimaDoc.user_id == user_id
+                )
                 results = session.exec(statement)
                 doc = results.first()
                 if doc is not None:
@@ -221,9 +246,12 @@ class MinimaStore(metaclass=Singleton):
             logger.error(f"Error updating status for {fpath}: {e}")
 
     @staticmethod
-    def get_files_status(fpaths: list[str]) -> list[dict]:
+    def get_files_status(fpaths: list[str], user_id: str = "default_user") -> list[dict]:
         with Session(engine) as session:
-            statement = select(MinimaDoc).where(MinimaDoc.fpath.in_(fpaths))
+            statement = select(MinimaDoc).where(
+                MinimaDoc.fpath.in_(fpaths),
+                MinimaDoc.user_id == user_id
+            )
             results = session.exec(statement)
             docs = results.all()
             return [

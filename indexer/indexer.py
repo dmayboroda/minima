@@ -103,6 +103,12 @@ class Indexer:
             field_name="fpath",
             field_schema="keyword"
         )
+        # Add user_id payload index for multiuser filtering
+        self.qdrant.create_payload_index(
+            collection_name=self.config.QDRANT_COLLECTION,
+            field_name="user_id",
+            field_schema="keyword"
+        )
         return QdrantVectorStore(
             client=self.qdrant,
             collection_name=self.config.QDRANT_COLLECTION,
@@ -118,7 +124,7 @@ class Indexer:
         
         return loader_class(file_path=file_path)
 
-    def _process_file(self, loader) -> List[str]:
+    def _process_file(self, loader, user_id: str = "default_user") -> List[str]:
         try:
             documents = loader.load_and_split(self.text_splitter)
             if not documents:
@@ -127,13 +133,15 @@ class Indexer:
 
             for doc in documents:
                 doc.metadata['file_path'] = loader.file_path
+                doc.metadata['user_id'] = user_id
+                doc.metadata['fpath'] = loader.file_path  # For backwards compatibility
 
             uuids = [str(uuid.uuid4()) for _ in range(len(documents))]
             ids = self.document_store.add_documents(documents=documents, ids=uuids)
-            
-            logger.info(f"Successfully processed {len(ids)} documents from {loader.file_path}")
+
+            logger.info(f"Successfully processed {len(ids)} documents from {loader.file_path} for user {user_id}")
             return ids
-            
+
         except Exception as e:
             logger.error(f"Error processing file {loader.file_path}: {str(e)}")
             return []
@@ -141,31 +149,32 @@ class Indexer:
     def index(self, message: Dict[str, any]) -> None:
         start = time.time()
         path, file_id, last_updated_seconds = message["path"], message["file_id"], message["last_updated_seconds"]
-        logger.info(f"Processing file: {path} (ID: {file_id})")
-        indexing_status: IndexingStatus = MinimaStore.check_needs_indexing(fpath=path, last_updated_seconds=last_updated_seconds)
+        user_id = message.get("user_id", "default_user")
+        logger.info(f"Processing file: {path} (ID: {file_id}) for user: {user_id}")
+        indexing_status: IndexingStatus = MinimaStore.check_needs_indexing(fpath=path, last_updated_seconds=last_updated_seconds, user_id=user_id)
         if indexing_status != IndexingStatus.no_need_reindexing:
             logger.info(f"Indexing needed for {path} with status: {indexing_status}")
 
             # Set status to indexing
-            MinimaStore.update_file_status(fpath=path, status=FileStatus.indexing)
+            MinimaStore.update_file_status(fpath=path, status=FileStatus.indexing, user_id=user_id)
 
             try:
                 if indexing_status == IndexingStatus.need_reindexing:
                     logger.info(f"Removing {path} from index storage for reindexing")
-                    self.remove_from_storage(files_to_remove=[path])
+                    self.remove_from_storage(files_to_remove=[path], user_id=user_id)
                 loader = self._create_loader(path)
-                ids = self._process_file(loader)
+                ids = self._process_file(loader, user_id=user_id)
                 if ids:
                     logger.info(f"Successfully indexed {path} with IDs: {ids}")
                     # Set status to indexed
-                    MinimaStore.update_file_status(fpath=path, status=FileStatus.indexed)
+                    MinimaStore.update_file_status(fpath=path, status=FileStatus.indexed, user_id=user_id)
                 else:
                     logger.warning(f"No documents indexed for {path}")
-                    MinimaStore.update_file_status(fpath=path, status=FileStatus.failed)
+                    MinimaStore.update_file_status(fpath=path, status=FileStatus.failed, user_id=user_id)
             except Exception as e:
                 logger.error(f"Failed to index file {path}: {str(e)}")
                 # Set status to failed
-                MinimaStore.update_file_status(fpath=path, status=FileStatus.failed)
+                MinimaStore.update_file_status(fpath=path, status=FileStatus.failed, user_id=user_id)
         else:
             logger.info(f"Skipping {path}, no indexing required. timestamp didn't change")
         end = time.time()
@@ -174,7 +183,7 @@ class Indexer:
 
         # Save indexing time to database
         if indexing_status != IndexingStatus.no_need_reindexing:
-            MinimaStore.update_indexing_time(fpath=path, indexing_time_seconds=indexing_time)
+            MinimaStore.update_indexing_time(fpath=path, indexing_time_seconds=indexing_time, user_id=user_id)
 
     def purge(self, message: Dict[str, any]) -> None:
         # Disabled automatic purge - files should only be removed via /files/remove API
@@ -187,35 +196,46 @@ class Indexer:
         # else:
         #     logger.info("Nothing to purge")
 
-    def remove_from_storage(self, files_to_remove: list[str]):
-        filter_conditions = Filter(
-            must=[
-                FieldCondition(
-                    key="fpath",
-                    match=MatchValue(value=fpath)
-                )
-                for fpath in files_to_remove
-            ]
-        )
-        response = self.qdrant.delete(
-            collection_name=self.config.QDRANT_COLLECTION,
-            points_selector=filter_conditions,
-            wait=True
-        )
-        logger.info(f"Delete response for {len(files_to_remove)} for files: {files_to_remove} is: {response}")
+    def remove_from_storage(self, files_to_remove: list[str], user_id: str = "default_user"):
+        # Create filter conditions that include both user_id and fpath
+        for fpath in files_to_remove:
+            filter_conditions = Filter(
+                must=[
+                    FieldCondition(key="user_id", match=MatchValue(value=user_id)),
+                    FieldCondition(key="fpath", match=MatchValue(value=fpath))
+                ]
+            )
+            response = self.qdrant.delete(
+                collection_name=self.config.QDRANT_COLLECTION,
+                points_selector=filter_conditions,
+                wait=True
+            )
+            logger.info(f"Delete response for file {fpath} (user: {user_id}): {response}")
 
-    def find(self, query: str) -> Dict[str, any]:
+    def find(self, query: str, user_id: str = "default_user") -> Dict[str, any]:
         try:
-            logger.info(f"Searching for: {query}")
-            found = self.document_store.search(query, search_type="similarity")
-            
+            logger.info(f"Searching for: {query} (user: {user_id})")
+
+            # Create user-filtered retriever
+            user_filter = Filter(
+                must=[
+                    FieldCondition(key="user_id", match=MatchValue(value=user_id))
+                ]
+            )
+
+            found = self.document_store.search(
+                query,
+                search_type="similarity",
+                filter=user_filter
+            )
+
             if not found:
                 logger.info("No results found")
                 return {"links": set(), "output": ""}
 
             links = set()
             results = []
-            
+
             for item in found:
                 path = item.metadata["file_path"].replace(
                     self.config.CONTAINER_PATH,
@@ -228,10 +248,10 @@ class Indexer:
                 "links": links,
                 "output": ". ".join(results)
             }
-            
-            logger.info(f"Found {len(found)} results")
+
+            logger.info(f"Found {len(found)} results for user {user_id}")
             return output
-            
+
         except Exception as e:
             logger.error(f"Search failed: {str(e)}")
             return {"error": "Unable to find anything for the given query"}

@@ -9,22 +9,25 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("llm")
 
 async def loop(
-    websocket: WebSocket, 
+    websocket: WebSocket,
     questions_queue: AsyncQueue,
-    respone_queue: AsyncQueue
+    respone_queue: AsyncQueue,
+    user_id: str = "default_user"
 ):
 
     await websocket.accept()
+    logger.info(f"WebSocket accepted for user: {user_id}")
+
     while True:
         try:
             message = await websocket.receive_text()
 
             if message == cfc.CFC_CHAT_STARTED:
-                logger.info(f"Start message {message}")
+                logger.info(f"Start message {message} (user: {user_id})")
                 questions_queue.enqueue(message)
 
             elif message == cfc.CFC_CHAT_STOPPED:
-                logger.info(f"Stop message {message}")
+                logger.info(f"Stop message {message} (user: {user_id})")
                 questions_queue.enqueue(message)
                 respone_queue.enqueue(json.dumps({
                     "reporter": "input_message",
@@ -33,8 +36,13 @@ async def loop(
                 }))
 
             else:
-                logger.info(f"Question: {message}")
-                questions_queue.enqueue(message)
+                logger.info(f"Question: {message} (user: {user_id})")
+                # Wrap message with user_id
+                question_data = {
+                    "message": message,
+                    "user_id": user_id
+                }
+                questions_queue.enqueue(json.dumps(question_data))
                 respone_queue.enqueue(json.dumps({
                     "reporter": "input_message",
                     "type": "question",

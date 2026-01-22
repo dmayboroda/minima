@@ -45,16 +45,17 @@ class LLMChain:
             logger.info("Initializing Ollama LLM Chain")
             self.chain = OllamaChain()
 
-    def invoke(self, message: str) -> dict:
+    def invoke(self, message: str, user_id: str = "default_user") -> dict:
         """
         Process a user message and return the response.
         Delegates to the underlying chain implementation.
 
         Args:
             message: The user's input message
+            user_id: The user ID for filtering documents
 
         Returns:
             dict: Contains the model's response or error information
                   Format: {"answer": str, "links": set} or {"error": str, "status": str}
         """
-        return self.chain.invoke(message)
+        return self.chain.invoke(message, user_id=user_id)

@@ -44,6 +44,17 @@ async def loop(
             )
             
         elif data:
+            # Parse message with user_id
+            try:
+                msg_data = json.loads(data)
+                message = msg_data.get("message", data)
+                user_id = msg_data.get("user_id", "default_user")
+            except (json.JSONDecodeError, TypeError):
+                message = data
+                user_id = "default_user"
+
+            logger.info(f"Processing message for user: {user_id}")
+
             # Send processing status
             response_queue.enqueue(
                 json.dumps({
@@ -53,8 +64,8 @@ async def loop(
                 })
             )
 
-            # Process the query
-            result = llm_chain.invoke(data)
+            # Process the query with user_id
+            result = llm_chain.invoke(message, user_id=user_id)
 
             # Send the answer
             response_queue.enqueue(
