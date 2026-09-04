@@ -61,7 +61,8 @@ class OllamaConfig:
     """Configuration settings for the Ollama LLM Chain"""
     qdrant_collection: str = "mnm_storage"
     qdrant_host: str = "qdrant"
-    ollama_url: str = "http://ollama:11434"
+    # Any Ollama-API server, e.g. llmman on port 17434
+    ollama_url: str = os.environ.get("OLLAMA_URL", "http://ollama:11434")
     ollama_model: str = os.environ.get("OLLAMA_MODEL")
     rerank_model: str = os.environ.get("RERANKER_MODEL")
     temperature: float = 0.5

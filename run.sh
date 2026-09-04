@@ -5,9 +5,10 @@ echo "1) Fully Local Setup (Ollama)"
 echo "2) Custom LLM (OpenAI-compatible API)"
 echo "3) ChatGPT Integration"
 echo "4) MCP usage"
-echo "5) Quit"
+echo "5) Fully Local Setup (llmman on host, Ollama API on port 17434)"
+echo "6) Quit"
 
-read -p "Enter your choice (1, 2, 3, 4 or 5): " user_choice
+read -p "Enter your choice (1, 2, 3, 4, 5 or 6): " user_choice
 
 case "$user_choice" in
     1)
@@ -28,10 +29,15 @@ case "$user_choice" in
         docker compose -f docker-compose-mcp.yml --env-file .env up --build
         ;;
     5)
+        echo "Starting fully local setup with llmman..."
+        echo "Make sure 'llmman serve' is running on the host and OLLAMA_MODEL is pulled."
+        docker compose -f docker-compose-llmman.yml --env-file .env up --build
+        ;;
+    6)
         echo "Exiting the script. Goodbye!"
         exit 0
         ;;
     *)
-        echo "Invalid input. Please enter 1, 2, 3, 4, or 5."
+        echo "Invalid input. Please enter 1, 2, 3, 4, 5, or 6."
         ;;
 esac
