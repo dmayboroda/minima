@@ -33,7 +33,8 @@ Select an option:
 2) Custom LLM (OpenAI-compatible API)
 3) ChatGPT Integration
 4) MCP usage
-5) Quit
+5) Fully Local Setup (llmman on host, Ollama API on port 17434)
+6) Quit
 ```
 
 ### Manual Docker Compose Commands
@@ -55,6 +56,8 @@ Select an option:
 </ul>
 
 3. For fully local installation use: **docker compose -f docker-compose-ollama.yml --env-file .env up --build**.
+
+   To use [llmman](https://github.com/llmmanorg/llmman) instead of Ollama (it serves the Ollama API on port 17434), run `llmman serve` and `llmman pull <OLLAMA_MODEL>` on the host, then: **docker compose -f docker-compose-llmman.yml --env-file .env up --build**. The `llm` container reaches it via `OLLAMA_URL=http://host.docker.internal:17434`.
 
 4. For custom LLM deployment (OpenAI-compatible API) use: **docker compose -f docker-compose-custom-llm.yml --env-file .env up --build**.
 
@@ -95,7 +98,9 @@ Select an option:
 
 **EMBEDDING_SIZE**: Define the embedding dimension provided by the model, which is needed to configure Qdrant vector storage. Ensure this value matches the actual embedding size of the specified EMBEDDING_MODEL_ID.
 
-**OLLAMA_MODEL**: Set up the Ollama model, use an ID available on the Ollama [site](https://ollama.com/search). Please, use LLM model here, not an embedding. This is only required when using Ollama (not needed when using custom LLM).
+**OLLAMA_MODEL**: Set up the Ollama model, use an ID available on the Ollama [site](https://ollama.com/search). Please, use LLM model here, not an embedding. This is only required when using Ollama (not needed when using custom LLM). With llmman, use a model name it can pull, e.g. `gemma4` or `hf.co/unsloth/Qwen3.5-0.8B-GGUF`.
+
+**OLLAMA_URL**: (Optional) Base URL of the Ollama-API server used by the `llm` container. Defaults to `http://ollama:11434`; `docker-compose-llmman.yml` sets it to `http://host.docker.internal:17434`.
 
 **LLM_BASE_URL**: (Optional) Base URL for your custom OpenAI-compatible LLM API endpoint. When this is set, Ollama will not be used and you don't need to deploy it.
 
